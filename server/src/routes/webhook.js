@@ -101,6 +101,28 @@ function extractSubmissionFromMeta(payload) {
   };
 }
 
+webhookRouter.get('/whatsapp', (req, res) => {
+  // Meta webhook verification handshake:
+  // ?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...
+  const mode = req.query['hub.mode'];
+  const verifyToken = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  try {
+    // Require env at runtime; server won't mount routes if env is invalid.
+    // eslint-disable-next-line global-require
+    const { config } = require('../config/env');
+    if (mode === 'subscribe' && verifyToken === config.WHATSAPP_TOKEN) {
+      return res.status(200).send(String(challenge || ''));
+    }
+    return res.status(403).send('Verification failed');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Webhook verification config error:', err);
+    return res.status(500).send('Server error');
+  }
+});
+
 webhookRouter.post('/whatsapp', async (req, res) => {
   try {
     const {
