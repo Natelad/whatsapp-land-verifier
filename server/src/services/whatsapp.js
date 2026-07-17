@@ -1,0 +1,44 @@
+const { config } = require('../config/env');
+
+function requireEnv(name) {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing required env var: ${name}`);
+  return v;
+}
+
+async function sendWhatsAppMessage({ toWaId, text }) {
+  if (!toWaId) throw new Error('sendWhatsAppMessage: toWaId is required');
+  if (!text) throw new Error('sendWhatsAppMessage: text is required');
+
+  // Meta Cloud API call
+  // POST https://graph.facebook.com/{version}/{WABA_PHONE_NUMBER_ID}/messages
+  // with Bearer token.
+  const url = `https://graph.facebook.com/${config.WHATSAPP_GRAPH_API_VERSION}/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: toWaId,
+    type: 'text',
+    text: { body: text },
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.WHATSAPP_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = body?.error?.message || `WhatsApp send failed with status ${res.status}`;
+    throw new Error(msg);
+  }
+  return body;
+}
+
+module.exports = {
+  sendWhatsAppMessage,
+};
