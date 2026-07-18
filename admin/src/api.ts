@@ -6,10 +6,12 @@ declare global {
   }
 }
 
-const API_BASE =
-  (import.meta as any)?.env?.VITE_API_BASE_URL && String((import.meta as any).env.VITE_API_BASE_URL).trim()
-    ? String((import.meta as any).env.VITE_API_BASE_URL).trim()
-    : 'https://whatsapp-land-verifier.onrender.com'
+const API_BASE = (() => {
+  const v = String(import.meta.env.VITE_API_BASE_URL || '').trim()
+  if (v) return v
+  // Hardcoded correct fallback (no "-1")
+  return 'https://whatsapp-land-verifier.onrender.com'
+})()
 
 function getAdminToken() {
   if (typeof window === 'undefined') return ''
