@@ -1,14 +1,15 @@
 import { Submission } from './types'
 
 declare global {
-  interface Window {
-    __API_BASE_URL?: string
+  interface ImportMetaEnv {
+    VITE_API_BASE_URL?: string
   }
 }
 
 const API_BASE =
-  (typeof window !== 'undefined' && window.__API_BASE_URL && String(window.__API_BASE_URL).trim()) ||
-  'https://whatsapp-land-verifier-1.onrender.com'
+  (import.meta as any)?.env?.VITE_API_BASE_URL && String((import.meta as any).env.VITE_API_BASE_URL).trim()
+    ? String((import.meta as any).env.VITE_API_BASE_URL).trim()
+    : 'https://whatsapp-land-verifier.onrender.com'
 
 function getAdminToken() {
   if (typeof window === 'undefined') return ''
