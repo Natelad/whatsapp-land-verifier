@@ -1,15 +1,29 @@
 import { Submission } from './types'
 
-const metaEnv = (import.meta as any).env || {}
-const API_BASE = metaEnv.VITE_API_BASE_URL && String(metaEnv.VITE_API_BASE_URL).trim()
-  ? String(metaEnv.VITE_API_BASE_URL).trim()
-  : 'http://localhost:8080'
+declare global {
+  interface Window {
+    __API_BASE_URL?: string
+  }
+}
+
+const API_BASE =
+  (typeof window !== 'undefined' && window.__API_BASE_URL && String(window.__API_BASE_URL).trim()) ||
+  'https://whatsapp-land-verifier-1.onrender.com'
+
+function getAdminToken() {
+  if (typeof window === 'undefined') return ''
+  return sessionStorage.getItem('admin_token') || ''
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`
+  const adminToken = getAdminToken()
+
+  const res = await fetch(url, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(adminToken ? { 'x-admin-token': adminToken } : null),
       ...(init?.headers || {}),
     },
   })
@@ -17,7 +31,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
     const msg = body?.error || `Request failed with status ${res.status}`
-    throw new Error(msg)
+    throw new Error(`${msg} (url: ${url})`)
   }
   return body as T
 }
