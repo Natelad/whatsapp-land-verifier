@@ -10,6 +10,10 @@ const config = {
   SUPABASE_URL: required('SUPABASE_URL'),
   SUPABASE_SERVICE_ROLE_KEY: required('SUPABASE_SERVICE_ROLE_KEY'),
 
+  // Admin access secret. If not set, /admin is open (dev convenience).
+  // For production, set ADMIN_TOKEN in Render env vars.
+  ADMIN_TOKEN: process.env.ADMIN_TOKEN,
+
   // Meta WhatsApp Cloud API
   // Example: https://graph.facebook.com/v20.0/{WABA_PHONE_NUMBER_ID}/messages
   WHATSAPP_GRAPH_API_VERSION: process.env.WHATSAPP_GRAPH_API_VERSION || '20.0',
