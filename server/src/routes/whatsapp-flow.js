@@ -35,7 +35,17 @@ whatsappFlowRouter.get('/', (req, res) => {
 });
 
 whatsappFlowRouter.post('/', (req, res) => {
-  const body = req.body || {};
+  // express.raw middleware may leave req.body as a Buffer.
+  // If so, attempt best-effort JSON parsing.
+  let body = req.body || {};
+  if (Buffer.isBuffer(body)) {
+    const asText = body.toString('utf8').trim();
+    try {
+      body = asText ? JSON.parse(asText) : {};
+    } catch {
+      body = {};
+    }
+  }
 
   // Commonly Meta sends something like: { action: "ping" } or similar.
   // We accept a few variants to be tolerant.
