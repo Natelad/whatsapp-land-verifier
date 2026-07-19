@@ -83,18 +83,23 @@ function extractSubmissionFromMeta(payload) {
     data?.fields?.national_id;
 
   // Meta may include contact/phone
-  const from_phone = value?.contacts?.[0]?.wa_id || null;
+  // Depending on webhook type, identifier may be in `message.from` (wa_id) or in contacts.
+  const from_phone =
+    message?.from ||
+    value?.contacts?.[0]?.wa_id ||
+    value?.contacts?.[0]?.phone?.number ||
+    null;
 
   // wa_id is required for replying; we also store raw payload for later debugging
   return {
-    wa_id: from,
+    wa_id: from || null,
     from_phone,
-    first_name: textFirstName,
-    last_name: textLastName,
-    farm_name: textFarmName,
-    gender: textGender,
-    national_id: textNationalId,
-    plot_number: textPlot,
+    first_name: textFirstName || null,
+    last_name: textLastName || null,
+    farm_name: textFarmName || null,
+    gender: textGender || null,
+    national_id: textNationalId || null,
+    plot_number: textPlot || null,
     wa_message_id: wa_message_id || null,
     wa_flow_token: flow_token || null,
     raw_payload: payload || {},
@@ -125,6 +130,21 @@ webhookRouter.get('/whatsapp', (req, res) => {
 
 webhookRouter.post('/whatsapp', async (req, res) => {
   try {
+    const extracted = extractSubmissionFromMeta(req.body || {});
+    // Temporary debug to align mapping with real Meta payload
+    console.log('Meta webhook received');
+    console.log('Extracted fields:', {
+      wa_id: extracted.wa_id,
+      plot_number: extracted.plot_number,
+      first_name: extracted.first_name,
+      last_name: extracted.last_name,
+      farm_name: extracted.farm_name,
+      gender: extracted.gender,
+      national_id: extracted.national_id,
+      wa_message_id: extracted.wa_message_id,
+      wa_flow_token: extracted.wa_flow_token,
+    });
+
     const {
       wa_id,
       plot_number,
@@ -137,13 +157,15 @@ webhookRouter.post('/whatsapp', async (req, res) => {
       wa_flow_token,
       from_phone,
       raw_payload,
-    } = extractSubmissionFromMeta(req.body || {});
+    } = extracted;
 
     if (!wa_id) {
       return res.status(400).json({ error: 'Missing wa_id in webhook payload' });
     }
     if (!plot_number) {
-      return res.status(400).json({ error: 'Missing plot_number in flow submission payload' });
+      return res
+        .status(400)
+        .json({ error: 'Missing plot_number in flow submission payload' });
     }
 
     const row = await upsertLandSubmission({
