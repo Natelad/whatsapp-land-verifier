@@ -1,1 +1,5 @@
-node_modules/\n.env
+node_modules/
+.env
+*.pem
+private.pem
+public.pem
