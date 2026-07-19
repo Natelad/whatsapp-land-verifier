@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
+const cors = require('cors');
 
 let adminRouter = null
 let webhookRouter = null
@@ -23,8 +24,28 @@ try {
 const app = express()
 app.use(helmet())
 
+// CORS (needed for browser preflight and for x-admin-token header)
+app.use(
+  cors({
+    origin: [
+      // local dev (if you run admin locally)
+      'http://localhost:5173',
+      // render admin UI domain (yours)
+      'https://whatsapp-land-verifier-1.onrender.com',
+      // also allow the backend domain itself
+      'https://whatsapp-land-verifier.onrender.com',
+    ],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'x-admin-token'],
+    credentials: true,
+  })
+)
+
 // Meta webhook payloads are JSON
 app.use(express.json({ limit: '2mb' }));
+
+// Explicit OPTIONS 204 for any route (preflight)
+app.options('*', (req, res) => res.sendStatus(204))
 
 app.get('/healthz', (req, res) => {
   res.status(200).json({ ok: true });

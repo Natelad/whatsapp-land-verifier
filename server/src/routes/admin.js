@@ -19,7 +19,11 @@ function requireAdminToken(req, res, next) {
   return next();
 }
 
-adminRouter.use(requireAdminToken);
+adminRouter.use((req, res, next) => {
+  // Allow CORS preflight requests without admin auth
+  if (req.method === 'OPTIONS') return res.sendStatus(204)
+  return requireAdminToken(req, res, next)
+})
 
 adminRouter.get('/submissions', async (req, res) => {
   try {

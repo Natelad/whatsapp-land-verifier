@@ -8,9 +8,10 @@ declare global {
 
 const API_BASE = (() => {
   const v = String(import.meta.env.VITE_API_BASE_URL || '').trim()
-  if (v) return v
-  // Hardcoded correct fallback (no "-1")
-  return 'https://whatsapp-land-verifier.onrender.com'
+  if (!v) {
+    throw new Error('Missing VITE_API_BASE_URL. Set it in Render for the Admin UI service.')
+  }
+  return v
 })()
 
 function getAdminToken() {
