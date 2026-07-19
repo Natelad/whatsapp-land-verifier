@@ -41,6 +41,16 @@ app.use(
   })
 )
 
+/**
+ * Route-specific body parsing:
+ * /whatsapp-flow must not crash on non-JSON bodies, since Meta ping payloads
+ * can sometimes arrive in formats that break strict JSON parsing.
+ */
+app.use(
+  '/whatsapp-flow',
+  express.raw({ type: '*/*', limit: '2mb' })
+)
+
 // Meta webhook payloads are JSON
 app.use(express.json({ limit: '2mb' }));
 
@@ -50,6 +60,12 @@ app.options('*', (req, res) => res.sendStatus(204))
 app.get('/healthz', (req, res) => {
   res.status(200).json({ ok: true });
 });
+
+/**
+ * WhatsApp Flows health check endpoint
+ * Meta will call this path to ensure the server is awake/configured.
+ */
+app.use('/whatsapp-flow', require('./routes/whatsapp-flow').whatsappFlowRouter)
 
 if (webhookRouter) {
   // WhatsApp/Meta webhook endpoint(s)
