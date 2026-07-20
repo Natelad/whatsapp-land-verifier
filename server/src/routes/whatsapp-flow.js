@@ -217,12 +217,14 @@ whatsappFlowRouter.post('/', (req, res) => {
     // Concatenate ciphertext + auth tag (Meta expects tag appended to ciphertext)
     const encryptedResponseWithTag = Buffer.concat([encryptedResponse, authTag]);
 
-    // Return encrypted response as Base64
-    return res.status(200).json({
-      encrypted_flow_data: encryptedResponseWithTag.toString('base64'),
-      encrypted_aes_key: encryptedAesKeyB64,
-      initial_vector: responseIv.toString('base64'),
-    });
+    // Return encrypted response
+    // Meta expects:
+    //   - Response body: raw Base64-encoded encrypted_flow_data string (NOT JSON wrapped)
+    //   - Headers: x-encrypted-aes-key and x-initial-vector
+    res.setHeader('x-encrypted-aes-key', encryptedAesKeyB64);
+    res.setHeader('x-initial-vector', responseIv.toString('base64'));
+    res.setHeader('Content-Type', 'text/plain');
+    return res.status(200).send(encryptedResponseWithTag.toString('base64'));
   } catch (err) {
     return res.status(500).json({
       error: 'Failed to decrypt encrypted_flow_data with private.pem',
