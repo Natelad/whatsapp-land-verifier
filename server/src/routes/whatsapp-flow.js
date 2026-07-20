@@ -196,21 +196,40 @@ whatsappFlowRouter.post('/', (req, res) => {
 
     const decryptedText = decrypted.toString('utf8');
 
+    // DEBUG: Log the decrypted request data
+    console.log('[/whatsapp-flow] Decrypted flow data:', decryptedText);
+
     // Best-effort parse JSON
     let decryptedObject = null;
     try {
       decryptedObject = JSON.parse(decryptedText);
+      console.log('[/whatsapp-flow] Decrypted object action:', decryptedObject?.action);
+      console.log('[/whatsapp-flow] Decrypted object screen:', decryptedObject?.screen);
+      console.log('[/whatsapp-flow] Decrypted object data:', JSON.stringify(decryptedObject?.data));
     } catch {
       decryptedObject = null;
     }
 
     // Build the response data to encrypt
-    const responseData = { data: { status: 'active' } };
+    // Include version and screen from the request if available
+    const responseData = {
+      version: decryptedObject?.version || '1.0',
+      data: {
+        status: 'active',
+      },
+    };
+    if (decryptedObject?.screen) {
+      responseData.screen = decryptedObject.screen;
+    }
     const responseJson = JSON.stringify(responseData);
+    console.log('[/whatsapp-flow] Response data to encrypt:', responseJson);
 
     // 3) Encrypt the response using AES-GCM with the same AES key
-    // Generate a new random IV for the response
+    // Generate a new random IV for the response (12 bytes standard for GCM)
     const responseIv = crypto.randomBytes(12);
+    console.log('[/whatsapp-flow] AES algorithm:', aesAlgo, 'key length:', aesKey.length, 'bytes');
+    console.log('[/whatsapp-flow] Response IV (hex):', responseIv.toString('hex'));
+    
     const cipher = crypto.createCipheriv(aesAlgo, aesKey, responseIv);
     const encryptedResponse = Buffer.concat([
       cipher.update(responseJson, 'utf8'),
@@ -221,14 +240,19 @@ whatsappFlowRouter.post('/', (req, res) => {
     // Concatenate ciphertext + auth tag (Meta expects tag appended to ciphertext)
     const encryptedResponseWithTag = Buffer.concat([encryptedResponse, authTag]);
 
+    console.log('[/whatsapp-flow] Encrypted response length:', encryptedResponseWithTag.length);
+    console.log('[/whatsapp-flow] Response Base64 length:', encryptedResponseWithTag.toString('base64').length);
+
     // Return encrypted response
-    // Meta WhatsApp Flows expects:
-    //   - Response body: raw Base64-encoded encrypted_flow_data string (NOT JSON wrapped)
-    //   - Headers: x-encrypted-aes-key and x-initial-vector
-    res.setHeader('x-encrypted-aes-key', encryptedAesKeyB64);
-    res.setHeader('x-initial-vector', responseIv.toString('base64'));
-    res.setHeader('Content-Type', 'text/plain');
-    return res.status(200).send(encryptedResponseWithTag.toString('base64'));
+    // Meta WhatsApp Flows expects JSON response:
+    //   encrypted_flow_data: Base64-encoded ciphertext + GCM tag
+    //   encrypted_aes_key: echo back the same encrypted AES key from the request
+    //   initial_vector: Base64-encoded new IV used for response encryption
+    return res.status(200).json({
+      encrypted_flow_data: encryptedResponseWithTag.toString('base64'),
+      encrypted_aes_key: encryptedAesKeyB64,
+      initial_vector: responseIv.toString('base64'),
+    });
   } catch (err) {
     return res.status(500).json({
       error: 'Failed to decrypt encrypted_flow_data with private.pem',
