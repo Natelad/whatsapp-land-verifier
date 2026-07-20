@@ -145,7 +145,7 @@ whatsappFlowRouter.post('/', (req, res) => {
     const privatePem = loadPrivatePem();
 
     // 1) RSA decrypt AES key
-    const encryptedAesKey = Buffer.from(String(encryptedAesKeyB64), 'base64');
+    const encryptedAesKeyBuf = Buffer.from(String(encryptedAesKeyB64), 'base64');
 
     const aesKey = crypto.privateDecrypt(
       {
@@ -153,7 +153,7 @@ whatsappFlowRouter.post('/', (req, res) => {
         padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
         oaepHash: 'sha256',
       },
-      encryptedAesKey
+      encryptedAesKeyBuf
     );
 
     if (aesKey.length !== 16) {
@@ -192,9 +192,28 @@ whatsappFlowRouter.post('/', (req, res) => {
       decryptedObject = null;
     }
 
+    // Build the response data to encrypt
+    const responseData = { data: { status: 'active' } };
+    const responseJson = JSON.stringify(responseData);
+
+    // 3) Encrypt the response using AES-128-GCM with the same AES key
+    // Generate a new random IV for the response
+    const responseIv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-128-gcm', aesKey, responseIv);
+    const encryptedResponse = Buffer.concat([
+      cipher.update(responseJson, 'utf8'),
+      cipher.final(),
+    ]);
+    const authTag = cipher.getAuthTag();
+
+    // Concatenate ciphertext + auth tag (Meta expects tag appended to ciphertext)
+    const encryptedResponseWithTag = Buffer.concat([encryptedResponse, authTag]);
+
+    // Return encrypted response as Base64
     return res.status(200).json({
-      data: { status: 'active' },
-      decrypted: decryptedObject ?? decryptedText,
+      encrypted_flow_data: encryptedResponseWithTag.toString('base64'),
+      encrypted_aes_key: encryptedAesKeyB64,
+      initial_vector: responseIv.toString('base64'),
     });
   } catch (err) {
     return res.status(500).json({
