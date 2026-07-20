@@ -45,6 +45,7 @@ app.use(
  * Route-specific body parsing:
  * /whatsapp-flow must not crash on non-JSON bodies, since Meta ping payloads
  * can sometimes arrive in formats that break strict JSON parsing.
+ * Using express.text() gives us a string that the router can parse as JSON.
  */
 app.use(
   '/whatsapp-flow',
