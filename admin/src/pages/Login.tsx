@@ -32,7 +32,7 @@ export default function Login() {
 
         <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 13, color: 'var(--gray-700)', fontWeight: 600 }}>Admin Token</span>
+            <span style={{ fontSize: 13, color: '#000', fontWeight: 600 }}>Admin Token</span>
             <input
               className="login-input"
               value={token}
