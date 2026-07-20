@@ -13,7 +13,7 @@ async function sendWhatsAppMessage({ toWaId, text }) {
   // Meta Cloud API call
   // POST https://graph.facebook.com/{version}/{WABA_PHONE_NUMBER_ID}/messages
   // with Bearer token.
-  const url = `https://graph.facebook.com/${config.WHATSAPP_GRAPH_API_VERSION}/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  const url = `https://graph.facebook.com/v20.0/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
   const payload = {
     messaging_product: 'whatsapp',
@@ -54,7 +54,7 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken, flowData = {
   if (!flowId) throw new Error('sendWhatsAppFlowMessage: flowId is required');
   if (!flowToken) throw new Error('sendWhatsAppFlowMessage: flowToken is required');
 
-  const url = `https://graph.facebook.com/${config.WHATSAPP_GRAPH_API_VERSION}/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  const url = `https://graph.facebook.com/v20.0/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
   const payload = {
     messaging_product: 'whatsapp',
