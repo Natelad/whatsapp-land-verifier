@@ -1,5 +1,8 @@
 const express = require('express');
+const crypto = require('crypto');
 const { upsertLandSubmission } = require('../services/supabase');
+const { sendWhatsAppFlowMessage } = require('../services/whatsapp');
+const { config } = require('../config/env');
 
 const webhookRouter = express.Router();
 
@@ -128,65 +131,117 @@ webhookRouter.get('/whatsapp', (req, res) => {
   }
 });
 
+/**
+ * Check if the incoming webhook payload is a text message (not a flow submission).
+ */
+function isTextMessage(payload) {
+  const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  if (!message) return false;
+  // Text messages have type === 'text'
+  return message.type === 'text' && message.text?.body;
+}
+
+/**
+ * Extract the text body and sender wa_id from a text message payload.
+ */
+function extractTextMessage(payload) {
+  const entry = payload?.entry?.[0];
+  const change = entry?.changes?.[0];
+  const value = change?.value;
+  const message = value?.messages?.[0];
+  return {
+    wa_id: message?.from || null,
+    text: message?.text?.body || null,
+    wa_message_id: message?.id || null,
+  };
+}
+
 webhookRouter.post('/whatsapp', async (req, res) => {
   try {
-    const extracted = extractSubmissionFromMeta(req.body || {});
-    // Temporary debug to align mapping with real Meta payload
-    console.log('Meta webhook received');
-    console.log('Extracted fields:', {
-      wa_id: extracted.wa_id,
-      plot_number: extracted.plot_number,
-      first_name: extracted.first_name,
-      last_name: extracted.last_name,
-      farm_name: extracted.farm_name,
-      gender: extracted.gender,
-      national_id: extracted.national_id,
-      wa_message_id: extracted.wa_message_id,
-      wa_flow_token: extracted.wa_flow_token,
+    // Always respond with 200 to Meta to acknowledge receipt
+    // (Meta will retry if we don't respond quickly)
+    res.status(200).json({ ok: true });
+
+    // Handle asynchronously after responding to Meta
+    setImmediate(async () => {
+      try {
+        // Check if this is a text message (like "hi")
+        if (isTextMessage(req.body)) {
+          const { wa_id, text, wa_message_id } = extractTextMessage(req.body);
+          console.log(`[Webhook] Text message from ${wa_id}: "${text}"`);
+
+          if (wa_id) {
+            // Generate a unique flow token for this session
+            const flowToken = `landbot_${wa_id}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+            console.log(`[Webhook] Sending Flow to ${wa_id} with token ${flowToken}`);
+            await sendWhatsAppFlowMessage({
+              toWaId: wa_id,
+              flowId: config.WHATSAPP_FLOW_ID,
+              flowToken,
+              flowData: {
+                wa_id: wa_id,
+              },
+            });
+            console.log(`[Webhook] Flow sent successfully to ${wa_id}`);
+          }
+          return;
+        }
+
+        // Otherwise, process as a flow submission
+        const extracted = extractSubmissionFromMeta(req.body || {});
+        console.log('[Webhook] Flow submission received:', {
+          wa_id: extracted.wa_id,
+          plot_number: extracted.plot_number,
+          first_name: extracted.first_name,
+          last_name: extracted.last_name,
+        });
+
+        const {
+          wa_id,
+          plot_number,
+          first_name,
+          last_name,
+          farm_name,
+          gender,
+          national_id,
+          wa_message_id,
+          wa_flow_token,
+          from_phone,
+          raw_payload,
+        } = extracted;
+
+        if (!wa_id) {
+          console.warn('[Webhook] Missing wa_id in flow submission');
+          return;
+        }
+        if (!plot_number) {
+          console.warn('[Webhook] Missing plot_number in flow submission');
+          return;
+        }
+
+        const row = await upsertLandSubmission({
+          plot_number: String(plot_number).trim(),
+          first_name: first_name ? String(first_name).trim() : null,
+          last_name: last_name ? String(last_name).trim() : null,
+          farm_name: farm_name ? String(farm_name).trim() : null,
+          gender: gender ? String(gender).trim() : null,
+          national_id: national_id ? String(national_id).trim() : null,
+          wa_id: String(wa_id).trim(),
+          from_phone: from_phone ? String(from_phone).trim() : null,
+          wa_message_id,
+          wa_flow_token,
+          raw_payload,
+        });
+
+        console.log(`[Webhook] Submission saved: ${row.id}`);
+      } catch (innerErr) {
+        console.error('[Webhook] Async processing error:', innerErr);
+      }
     });
-
-    const {
-      wa_id,
-      plot_number,
-      first_name,
-      last_name,
-      farm_name,
-      gender,
-      national_id,
-      wa_message_id,
-      wa_flow_token,
-      from_phone,
-      raw_payload,
-    } = extracted;
-
-    if (!wa_id) {
-      return res.status(400).json({ error: 'Missing wa_id in webhook payload' });
-    }
-    if (!plot_number) {
-      return res
-        .status(400)
-        .json({ error: 'Missing plot_number in flow submission payload' });
-    }
-
-    const row = await upsertLandSubmission({
-      plot_number: String(plot_number).trim(),
-      first_name: first_name ? String(first_name).trim() : null,
-      last_name: last_name ? String(last_name).trim() : null,
-      farm_name: farm_name ? String(farm_name).trim() : null,
-      gender: gender ? String(gender).trim() : null,
-      national_id: national_id ? String(national_id).trim() : null,
-      wa_id: String(wa_id).trim(),
-      from_phone: from_phone ? String(from_phone).trim() : null,
-      wa_message_id,
-      wa_flow_token,
-      raw_payload,
-    });
-
-    return res.status(200).json({ ok: true, submission_id: row.id });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('Webhook error:', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    console.error('[Webhook] Error:', err);
+    // We already sent 200, so nothing more to do
   }
 });
 

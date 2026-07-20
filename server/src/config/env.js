@@ -19,6 +19,9 @@ const config = {
   WHATSAPP_GRAPH_API_VERSION: process.env.WHATSAPP_GRAPH_API_VERSION || '20.0',
   WHATSAPP_TOKEN: required('WHATSAPP_TOKEN'),
   WHATSAPP_PHONE_NUMBER_ID: required('WHATSAPP_PHONE_NUMBER_ID'),
+
+  // WhatsApp Flows - the Flow ID from WhatsApp Manager
+  WHATSAPP_FLOW_ID: process.env.WHATSAPP_FLOW_ID || '1030716066135048',
 };
 
 module.exports = { config };
