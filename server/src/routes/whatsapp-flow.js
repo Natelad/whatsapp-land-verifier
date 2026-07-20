@@ -164,14 +164,18 @@ whatsappFlowRouter.post('/', (req, res) => {
       encryptedAesKeyBuf
     );
 
-    if (aesKey.length !== 16) {
+    // Meta uses AES-256 (32-byte key). Accept 16/24/32 for AES-128/192/256.
+    if (![16, 24, 32].includes(aesKey.length)) {
       return res.status(400).json({
-        error: 'Decryption failed: AES key is not 16 bytes (AES-128 expected).',
+        error: 'Decryption failed: AES key length is invalid.',
         aesKeyLength: aesKey.length,
       });
     }
 
-    // 2) AES-128-GCM decrypt flow data
+    // Determine AES cipher algorithm based on key length
+    const aesAlgo = `aes-${aesKey.length * 8}-gcm`;
+
+    // 2) AES-GCM decrypt flow data
     const iv = Buffer.from(String(initialVectorB64), 'base64');
 
     const encFlowBuf = Buffer.from(String(encryptedFlowDataB64), 'base64');
@@ -185,7 +189,7 @@ whatsappFlowRouter.post('/', (req, res) => {
     const tag = encFlowBuf.subarray(encFlowBuf.length - 16);
     const ciphertext = encFlowBuf.subarray(0, encFlowBuf.length - 16);
 
-    const decipher = crypto.createDecipheriv('aes-128-gcm', aesKey, iv);
+    const decipher = crypto.createDecipheriv(aesAlgo, aesKey, iv);
     decipher.setAuthTag(tag);
 
     const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
@@ -204,10 +208,10 @@ whatsappFlowRouter.post('/', (req, res) => {
     const responseData = { data: { status: 'active' } };
     const responseJson = JSON.stringify(responseData);
 
-    // 3) Encrypt the response using AES-128-GCM with the same AES key
+    // 3) Encrypt the response using AES-GCM with the same AES key
     // Generate a new random IV for the response
     const responseIv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-128-gcm', aesKey, responseIv);
+    const cipher = crypto.createCipheriv(aesAlgo, aesKey, responseIv);
     const encryptedResponse = Buffer.concat([
       cipher.update(responseJson, 'utf8'),
       cipher.final(),
@@ -218,7 +222,7 @@ whatsappFlowRouter.post('/', (req, res) => {
     const encryptedResponseWithTag = Buffer.concat([encryptedResponse, authTag]);
 
     // Return encrypted response
-    // Meta expects:
+    // Meta WhatsApp Flows expects:
     //   - Response body: raw Base64-encoded encrypted_flow_data string (NOT JSON wrapped)
     //   - Headers: x-encrypted-aes-key and x-initial-vector
     res.setHeader('x-encrypted-aes-key', encryptedAesKeyB64);
