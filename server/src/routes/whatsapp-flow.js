@@ -7,18 +7,26 @@ const whatsappFlowRouter = express.Router();
 
 
 /**
- * Load Render secret file: private.pem
- * Auto-detect whether it ends up at:
- * - process.cwd()/private.pem  (often "server/")
- * - ../../private.pem          (repo root)
+ * Load the RSA private key.
+ * Priority:
+ * 1. PRIVATE_KEY environment variable (Render)
+ * 2. private.pem file on disk (local dev)
  */
 function loadPrivatePem() {
+  // 1) Check env var first (Render / production)
+  if (process.env.PRIVATE_KEY) {
+    const key = process.env.PRIVATE_KEY.trim();
+    if (key.includes('BEGIN')) return key;
+    throw new Error('PRIVATE_KEY env var does not contain a valid PEM header');
+  }
+
+  // 2) Fallback to private.pem file on disk
   const candidates = [
     path.join(process.cwd(), 'private.pem'),
     path.join(__dirname, '../../private.pem'),
   ];
 
-  const lastErr = { message: 'private.pem not found in expected locations' };
+  const lastErr = { message: 'private.pem not found in expected locations and PRIVATE_KEY env var not set' };
   for (const p of candidates) {
     try {
       if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8');
