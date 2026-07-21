@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { api } from '../api'
 import { Submission, SubmissionFilters, REJECTION_TEMPLATES } from '../types'
 import SubmissionDetails from './SubmissionDetails'
@@ -20,6 +20,7 @@ export default function AllSubmissions() {
     limit: 20,
   })
   const [searchInput, setSearchInput] = useState('')
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   async function load() {
     setLoading(true)
@@ -45,8 +46,20 @@ export default function AllSubmissions() {
     setFilters(prev => ({ ...prev, search: searchInput, page: 1 }))
   }
 
+  function handleSearchChange(value: string) {
+    setSearchInput(value)
+    // Debounce: auto-search after 500ms of no typing
+    if (debounceTimer.current) clearTimeout(debounceTimer.current)
+    debounceTimer.current = setTimeout(() => {
+      setFilters(prev => ({ ...prev, search: value, page: 1 }))
+    }, 500)
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') handleSearch()
+    if (e.key === 'Enter') {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current)
+      setFilters(prev => ({ ...prev, search: searchInput, page: 1 }))
+    }
   }
 
   function handleExport() {
@@ -66,6 +79,13 @@ export default function AllSubmissions() {
       default: return 'status-pending'
     }
   }
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current)
+    }
+  }, [])
 
   return (
     <div className="all-submissions-page">
@@ -105,7 +125,7 @@ export default function AllSubmissions() {
             type="text"
             placeholder="Search by name, ID, plot number, phone..."
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             onKeyDown={handleKeyDown}
           />
         </div>

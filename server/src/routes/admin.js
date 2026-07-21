@@ -8,7 +8,7 @@ const adminRouter = express.Router();
 
 // Simple shared secret protection (recommended to replace with real auth later)
 function requireAdminToken(req, res, next) {
-  const token = req.headers['x-admin-token'];
+  const token = req.headers['x-admin-token'] || req.query.token || '';
   if (!config.ADMIN_TOKEN) {
     // If not set, allow (dev convenience). In production, set ADMIN_TOKEN.
     return next();

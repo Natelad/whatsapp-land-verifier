@@ -103,8 +103,9 @@ export const api = {
     if (filters.search) params.set('search', filters.search)
     if (filters.date_from) params.set('date_from', filters.date_from)
     if (filters.date_to) params.set('date_to', filters.date_to)
-    const qs = params.toString()
     const adminToken = getAdminToken()
-    return `${API_BASE}/admin/export${qs ? `?${qs}` : ''}&token=${adminToken}`
+    if (adminToken) params.set('token', adminToken)
+    const qs = params.toString()
+    return `${API_BASE}/admin/export${qs ? `?${qs}` : ''}`
   },
 }
