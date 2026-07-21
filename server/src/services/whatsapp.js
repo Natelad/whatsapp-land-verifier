@@ -49,7 +49,7 @@ async function sendWhatsAppMessage({ toWaId, text }) {
  * @param {string} params.flowToken - A unique flow token (session identifier)
  * @param {Object} params.flowData - Optional data to pass to the flow's first screen
  */
-async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken, flowData = {} }) {
+async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
   if (!toWaId) throw new Error('sendWhatsAppFlowMessage: toWaId is required');
   if (!flowId) throw new Error('sendWhatsAppFlowMessage: flowId is required');
   if (!flowToken) throw new Error('sendWhatsAppFlowMessage: flowToken is required');
@@ -80,10 +80,9 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken, flowData = {
           flow_token: flowToken,
           flow_id: flowId,
           flow_cta: 'Open Form',
-          flow_action: 'data_exchange',
+          flow_action: 'navigate',
           flow_action_payload: {
             screen: 'INIT',
-            data: flowData,
           },
         },
       },
