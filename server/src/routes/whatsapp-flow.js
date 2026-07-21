@@ -222,6 +222,19 @@ whatsappFlowRouter.post('/', async (req, res) => {
         const { upsertLandSubmission } = require('../services/supabase');
         const data = decryptedObject.data;
 
+        // Extract wa_id from flow_token pattern: landbot_{wa_id}_{timestamp}_{random}
+        let extractedWaId = null;
+        if (flowToken && typeof flowToken === 'string') {
+          const parts = flowToken.split('_');
+          // Format: landbot_{wa_id}_{timestamp}_{random}
+          // wa_id is the second part (index 1)
+          if (parts.length >= 2 && parts[0] === 'landbot') {
+            extractedWaId = parts[1];
+          }
+        }
+        // Also check if the submitted data contains wa_id or phone number
+        const userWaId = data.wa_id || data.phone || data.phone_number || data.tel || extractedWaId || null;
+
         const submissionData = {
           plot_number: String(data.plot_number || data.plotNumber || data.plot || '').trim(),
           first_name: data.first_name || data.firstName || data.given_name || null,
@@ -229,7 +242,7 @@ whatsappFlowRouter.post('/', async (req, res) => {
           farm_name: data.farm_name || data.farmName || null,
           gender: data.gender || data.sex || null,
           national_id: data.national_id || data.nationalId || data.id_number || null,
-          wa_id: String(flowToken || '').trim() || null,
+          wa_id: userWaId,
           wa_flow_token: flowToken || null,
           raw_payload: decryptedObject,
         };
