@@ -86,7 +86,7 @@ function looksLikePing(body) {
   return false;
 }
 
-whatsappFlowRouter.post('/', (req, res) => {
+whatsappFlowRouter.post('/', async (req, res) => {
   // express.raw middleware may leave req.body as a Buffer.
   // If so, attempt best-effort JSON parsing.
   let body = req.body || {};
