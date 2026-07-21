@@ -98,6 +98,117 @@ async function listPendingSubmissions(limit = 50) {
   return data || [];
 }
 
+async function listAllSubmissions({ status, search, date_from, date_to, sort_by, sort_order, page, limit } = {}) {
+  let query = supabase.from('land_submissions').select('*', { count: 'exact' });
+
+  // Status filter
+  if (status && status !== 'all') {
+    query = query.eq('status', status);
+  }
+
+  // Search across multiple fields
+  if (search && search.trim()) {
+    const term = `%${search.trim()}%`;
+    query = query.or(
+      `plot_number.ilike.${term},first_name.ilike.${term},last_name.ilike.${term},national_id.ilike.${term},wa_id.ilike.${term},farm_name.ilike.${term},from_phone.ilike.${term}`
+    );
+  }
+
+  // Date range
+  if (date_from) {
+    query = query.gte('created_at', date_from);
+  }
+  if (date_to) {
+    query = query.lte('created_at', date_to);
+  }
+
+  // Sorting
+  const sortField = sort_by || 'created_at';
+  const sortDir = sort_order === 'asc' ? { ascending: true } : { ascending: false };
+  query = query.order(sortField, sortDir);
+
+  // Pagination
+  const pageNum = Math.max(1, parseInt(page || '1', 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit || '20', 10) || 20));
+  const offset = (pageNum - 1) * limitNum;
+  query = query.range(offset, offset + limitNum - 1);
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return { items: data || [], total: count || 0, page: pageNum, limit: limitNum };
+}
+
+async function getDashboardStats() {
+  // Get total counts by status
+  const { data: statusCounts, error: statusError } = await supabase
+    .from('land_submissions')
+    .select('status');
+
+  if (statusError) throw statusError;
+
+  const total = statusCounts.length;
+  const pending = statusCounts.filter(s => s.status === 'Pending').length;
+  const verified = statusCounts.filter(s => s.status === 'Verified').length;
+  const rejected = statusCounts.filter(s => s.status === 'Rejected').length;
+
+  // Average turnaround time for verified submissions
+  const { data: verifiedSubs, error: verifiedError } = await supabase
+    .from('land_submissions')
+    .select('created_at, verified_at')
+    .eq('status', 'Verified')
+    .not('verified_at', 'is', null);
+
+  if (verifiedError) throw verifiedError;
+
+  let avgTurnaroundHours = null;
+  if (verifiedSubs && verifiedSubs.length > 0) {
+    const totalHours = verifiedSubs.reduce((sum, sub) => {
+      const created = new Date(sub.created_at).getTime();
+      const verified = new Date(sub.verified_at).getTime();
+      return sum + (verified - created) / (1000 * 60 * 60);
+    }, 0);
+    avgTurnaroundHours = Math.round((totalHours / verifiedSubs.length) * 10) / 10;
+  }
+
+  return {
+    total,
+    pending,
+    verified,
+    rejected,
+    approvalRate: total > 0 ? Math.round((verified / total) * 100) : 0,
+    rejectionRate: total > 0 ? Math.round((rejected / total) * 100) : 0,
+    avgTurnaroundHours,
+  };
+}
+
+async function getSubmissionsExport({ status, search, date_from, date_to } = {}) {
+  let query = supabase.from('land_submissions').select('*');
+
+  if (status && status !== 'all') {
+    query = query.eq('status', status);
+  }
+
+  if (search && search.trim()) {
+    const term = `%${search.trim()}%`;
+    query = query.or(
+      `plot_number.ilike.${term},first_name.ilike.${term},last_name.ilike.${term},national_id.ilike.${term},wa_id.ilike.${term}`
+    );
+  }
+
+  if (date_from) {
+    query = query.gte('created_at', date_from);
+  }
+  if (date_to) {
+    query = query.lte('created_at', date_to);
+  }
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
 async function setSubmissionStatus({ id, status, admin_name, rejection_reason }) {
   const patch = {
     status,
@@ -136,5 +247,8 @@ module.exports = {
   upsertLandSubmission,
   getSubmissionById,
   listPendingSubmissions,
+  listAllSubmissions,
+  getDashboardStats,
+  getSubmissionsExport,
   setSubmissionStatus,
 };

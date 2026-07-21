@@ -1,4 +1,4 @@
-import { Submission } from './types'
+import { Submission, DashboardStats, PaginatedResult, SubmissionFilters } from './types'
 
 declare global {
   interface ImportMetaEnv {
@@ -48,6 +48,26 @@ export const api = {
     return data.items
   },
 
+  async listAllSubmissions(filters: Partial<SubmissionFilters>): Promise<PaginatedResult> {
+    const params = new URLSearchParams()
+    if (filters.status && filters.status !== 'all') params.set('status', filters.status)
+    if (filters.search) params.set('search', filters.search)
+    if (filters.date_from) params.set('date_from', filters.date_from)
+    if (filters.date_to) params.set('date_to', filters.date_to)
+    if (filters.sort_by) params.set('sort_by', filters.sort_by)
+    if (filters.sort_order) params.set('sort_order', filters.sort_order)
+    if (filters.page) params.set('page', String(filters.page))
+    if (filters.limit) params.set('limit', String(filters.limit))
+    
+    const qs = params.toString()
+    return request<PaginatedResult>(`/admin/submissions${qs ? `?${qs}` : ''}`)
+  },
+
+  async getDashboardStats(): Promise<DashboardStats> {
+    const data = await request<{ ok: boolean; stats: DashboardStats }>('/admin/stats')
+    return data.stats
+  },
+
   async verifySubmission(id: string, admin_name?: string): Promise<Submission> {
     const data = await request<{ ok: boolean; submission: Submission }>(
       `/admin/submissions/${id}/verify`,
@@ -68,5 +88,23 @@ export const api = {
       }
     )
     return data.submission
+  },
+
+  async sendMessage(id: string, message: string): Promise<void> {
+    await request(`/admin/submissions/${id}/message`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    })
+  },
+
+  getExportUrl(filters: Partial<SubmissionFilters>): string {
+    const params = new URLSearchParams()
+    if (filters.status && filters.status !== 'all') params.set('status', filters.status)
+    if (filters.search) params.set('search', filters.search)
+    if (filters.date_from) params.set('date_from', filters.date_from)
+    if (filters.date_to) params.set('date_to', filters.date_to)
+    const qs = params.toString()
+    const adminToken = getAdminToken()
+    return `${API_BASE}/admin/export${qs ? `?${qs}` : ''}&token=${adminToken}`
   },
 }
