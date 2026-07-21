@@ -82,7 +82,7 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
           flow_cta: 'Open Form',
           flow_action: 'navigate',
           flow_action_payload: {
-            screen: 'INIT',
+            screen: 'GREETING',
           },
         },
       },
