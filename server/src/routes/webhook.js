@@ -179,9 +179,6 @@ webhookRouter.post('/whatsapp', async (req, res) => {
               toWaId: wa_id,
               flowId: config.WHATSAPP_FLOW_ID,
               flowToken,
-              flowData: {
-                wa_id: wa_id,
-              },
             });
             console.log(`[Webhook] Flow sent successfully to ${wa_id}`);
           }
