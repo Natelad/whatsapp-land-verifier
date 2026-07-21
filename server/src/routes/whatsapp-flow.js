@@ -248,14 +248,33 @@ whatsappFlowRouter.post('/', async (req, res) => {
     // ----------------------------------------------------------------
     // 4) Build response data
     // ----------------------------------------------------------------
-    // For data_exchange: respond with the next screen to navigate to
+    // For data_exchange (form submission): navigate to SUCCESS screen
     // Meta Flow spec: response should contain screen + data object
-    const responseData = {
-      screen: screen,
-      data: {
+    let responseScreen = screen;
+    let responseDataObj = {};
+
+    if (action === 'data_exchange') {
+      // After successful form submission, navigate to the success/confirmation screen
+      responseScreen = 'SUCCESS';
+      responseDataObj = {
         status: 'success',
-        message: 'Land verification submitted successfully',
-      },
+        message: 'Your land verification has been submitted successfully. A bank representative will review it shortly.',
+      };
+    } else if (action === 'ping' || action === 'init') {
+      // Health check or initial screen
+      responseDataObj = {
+        status: 'active',
+      };
+    } else {
+      // Default: stay on current screen
+      responseDataObj = {
+        status: 'active',
+      };
+    }
+
+    const responseData = {
+      screen: responseScreen,
+      data: responseDataObj,
     };
     const responseJson = JSON.stringify(responseData);
     console.log('[/whatsapp-flow] Response JSON to encrypt:', responseJson);
