@@ -100,6 +100,8 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
+    console.error('[WhatsApp Flow] Full error response:', JSON.stringify(body, null, 2));
+    console.error('[WhatsApp Flow] Request payload sent:', JSON.stringify(payload, null, 2));
     const msg = body?.error?.message || `WhatsApp flow send failed with status ${res.status}`;
     throw new Error(msg);
   }
