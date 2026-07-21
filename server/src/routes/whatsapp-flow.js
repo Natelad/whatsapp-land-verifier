@@ -205,21 +205,63 @@ whatsappFlowRouter.post('/', (req, res) => {
     }
 
     // ----------------------------------------------------------------
-    // 3) Build response data
+    // 3) Handle data_exchange: save submitted form data
     // ----------------------------------------------------------------
-    // Per Meta spec: response should contain screen + data for data exchange,
-    // or { data: { status: 'active' } } for health check
+    const action = decryptedObject?.action;
+    const screen = decryptedObject?.screen || 'GREETING';
+    const flowToken = decryptedObject?.flow_token;
+
+    // Log all submitted form fields for debugging
+    if (decryptedObject?.data) {
+      console.log('[/whatsapp-flow] Submitted form data:', JSON.stringify(decryptedObject.data, null, 2));
+    }
+
+    // If this is a data_exchange (form submission), save to Supabase
+    if (action === 'data_exchange' && decryptedObject?.data) {
+      try {
+        const { upsertLandSubmission } = require('../services/supabase');
+        const data = decryptedObject.data;
+
+        const submissionData = {
+          plot_number: String(data.plot_number || data.plotNumber || data.plot || '').trim(),
+          first_name: data.first_name || data.firstName || data.given_name || null,
+          last_name: data.last_name || data.lastName || data.family_name || null,
+          farm_name: data.farm_name || data.farmName || null,
+          gender: data.gender || data.sex || null,
+          national_id: data.national_id || data.nationalId || data.id_number || null,
+          wa_id: String(flowToken || '').trim() || null,
+          wa_flow_token: flowToken || null,
+          raw_payload: decryptedObject,
+        };
+
+        if (submissionData.plot_number && (submissionData.first_name || submissionData.last_name)) {
+          const row = await upsertLandSubmission(submissionData);
+          console.log('[/whatsapp-flow] Submission saved from flow:', row?.id);
+        } else {
+          console.log('[/whatsapp-flow] Incomplete submission data, skipping save');
+        }
+      } catch (saveErr) {
+        console.error('[/whatsapp-flow] Error saving submission:', saveErr.message);
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // 4) Build response data
+    // ----------------------------------------------------------------
+    // For data_exchange: respond with the next screen to navigate to
+    // Meta Flow spec: response should contain screen + data object
     const responseData = {
-      screen: decryptedObject?.screen || 'SCREEN_NAME',
+      screen: screen,
       data: {
-        status: 'active',
+        status: 'success',
+        message: 'Land verification submitted successfully',
       },
     };
     const responseJson = JSON.stringify(responseData);
     console.log('[/whatsapp-flow] Response JSON to encrypt:', responseJson);
 
     // ----------------------------------------------------------------
-    // 4) Encrypt response using AES-128-GCM with FLIPPED IV
+    // 5) Encrypt response using AES-128-GCM with FLIPPED IV
     //    Meta spec: XOR each byte of the request IV with 0xFF
     // ----------------------------------------------------------------
     const flippedIv = Buffer.alloc(iv.length);
@@ -243,7 +285,7 @@ whatsappFlowRouter.post('/', (req, res) => {
     console.log('[/whatsapp-flow] Encrypted response Base64 length:', encryptedBase64.length);
 
     // ----------------------------------------------------------------
-    // 5) Return encrypted response as plain text per Meta spec
+    // 6) Return encrypted response as plain text per Meta spec
     //    Meta expects: Content-Type: text/plain, body = Base64 string
     // ----------------------------------------------------------------
     res.setHeader('Content-Type', 'text/plain');
