@@ -22,10 +22,10 @@ export default function App() {
     <div className="admin-layout">
       <header className="admin-header">
         <div className="admin-header-left">
-          <div className="admin-logo">L</div>
+          <img src="/zlc-logo.jpg" alt="ZLC Logo" className="admin-logo-img" />
           <div>
-            <div className="admin-header-title">Landbot Admin</div>
-            <div className="admin-header-subtitle">Land Verification Dashboard</div>
+            <div className="admin-header-title">ZLC Admin</div>
+            <div className="admin-header-subtitle">Zimbabwe Land Commission Dashboard</div>
           </div>
         </div>
         <div className="admin-header-right">

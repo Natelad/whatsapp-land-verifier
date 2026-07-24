@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { api } from '../api'
-import { Submission, SubmissionFilters, REJECTION_TEMPLATES } from '../types'
+import { Submission } from '../types'
 import SubmissionDetails from './SubmissionDetails'
 
 export default function AllSubmissions() {
@@ -42,13 +42,8 @@ export default function AllSubmissions() {
 
   const totalPages = Math.ceil(total / filters.limit)
 
-  function handleSearch() {
-    setFilters(prev => ({ ...prev, search: searchInput, page: 1 }))
-  }
-
   function handleSearchChange(value: string) {
     setSearchInput(value)
-    // Debounce: auto-search after 500ms of no typing
     if (debounceTimer.current) clearTimeout(debounceTimer.current)
     debounceTimer.current = setTimeout(() => {
       setFilters(prev => ({ ...prev, search: value, page: 1 }))
@@ -80,6 +75,62 @@ export default function AllSubmissions() {
     }
   }
 
+  function getStatusDotClass(status: string) {
+    switch (status?.toLowerCase()) {
+      case 'verified': return 'dot-verified'
+      case 'rejected': return 'dot-rejected'
+      default: return 'dot-pending'
+    }
+  }
+
+  function getStatusLineClass(status: string) {
+    switch (status?.toLowerCase()) {
+      case 'verified': return 'status-verified-line'
+      case 'rejected': return 'status-rejected-line'
+      default: return 'status-pending-line'
+    }
+  }
+
+  function getInitials(first: string | null, last: string | null): string {
+    const f = first?.charAt(0) || ''
+    const l = last?.charAt(0) || ''
+    return (f + l) || '?'
+  }
+
+  function hasActiveFilters(): boolean {
+    return filters.status !== 'all' || filters.search !== '' || filters.date_from !== '' || filters.date_to !== ''
+  }
+
+  function getActiveFilterCount(): number {
+    let count = 0
+    if (filters.status !== 'all') count++
+    if (filters.search !== '') count++
+    if (filters.date_from !== '') count++
+    if (filters.date_to !== '') count++
+    return count
+  }
+
+  function clearAllFilters() {
+    setSearchInput('')
+    setFilters(prev => ({
+      ...prev,
+      status: 'all',
+      search: '',
+      date_from: '',
+      date_to: '',
+      page: 1,
+    }))
+  }
+
+  function getStatusLabel(status: string): string {
+    switch (status) {
+      case 'Pending': return 'Pending'
+      case 'Verified': return 'Verified'
+      case 'Rejected': return 'Rejected'
+      default: return status
+    }
+  }
+
   // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
@@ -89,6 +140,7 @@ export default function AllSubmissions() {
 
   return (
     <div className="all-submissions-page">
+      {/* Page Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">All Submissions</h1>
@@ -113,6 +165,91 @@ export default function AllSubmissions() {
           </button>
         </div>
       </div>
+
+      {/* Summary Stats Bar */}
+      <div className="submissions-stats-bar">
+        <div className="submissions-stat-item">
+          <div className="submissions-stat-icon stat-total-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+          </div>
+          <div className="submissions-stat-info">
+            <div className="submissions-stat-value">{total}</div>
+            <div className="submissions-stat-label">Total</div>
+          </div>
+        </div>
+        <div className="submissions-stat-item">
+          <div className="submissions-stat-icon stat-pending-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+          <div className="submissions-stat-info">
+            <div className="submissions-stat-value">{items.filter(i => i.status === 'Pending').length}</div>
+            <div className="submissions-stat-label">Pending</div>
+          </div>
+        </div>
+        <div className="submissions-stat-item">
+          <div className="submissions-stat-icon stat-verified-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </div>
+          <div className="submissions-stat-info">
+            <div className="submissions-stat-value">{items.filter(i => i.status === 'Verified').length}</div>
+            <div className="submissions-stat-label">Verified</div>
+          </div>
+        </div>
+        <div className="submissions-stat-item">
+          <div className="submissions-stat-icon stat-rejected-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          </div>
+          <div className="submissions-stat-info">
+            <div className="submissions-stat-value">{items.filter(i => i.status === 'Rejected').length}</div>
+            <div className="submissions-stat-label">Rejected</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Filters Bar */}
+      {hasActiveFilters() && (
+        <div className="active-filters-bar">
+          <span className="active-filters-label">Active Filters ({getActiveFilterCount()}):</span>
+          {filters.status !== 'all' && (
+            <span className="active-filter-chip">
+              Status: {getStatusLabel(filters.status)}
+            </span>
+          )}
+          {filters.search !== '' && (
+            <span className="active-filter-chip">
+              Search: "{filters.search}"
+            </span>
+          )}
+          {filters.date_from !== '' && (
+            <span className="active-filter-chip">
+              From: {filters.date_from}
+            </span>
+          )}
+          {filters.date_to !== '' && (
+            <span className="active-filter-chip">
+              To: {filters.date_to}
+            </span>
+          )}
+          <button className="clear-filters-link" onClick={clearAllFilters}>
+            Clear all filters
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="filters-bar">
@@ -171,7 +308,7 @@ export default function AllSubmissions() {
       </div>
 
       <div className="submissions-table-layout">
-        {/* Table */}
+        {/* Table Panel */}
         <div className="submissions-table-panel">
           {loading && items.length === 0 ? (
             <div className="loading-state">
@@ -180,22 +317,36 @@ export default function AllSubmissions() {
             </div>
           ) : error ? (
             <div className="error-state">
-              <p style={{ color: '#e53e3e' }}>{error}</p>
+              <p>{error}</p>
+              <button className="retry-btn" onClick={load}>Try Again</button>
             </div>
           ) : items.length === 0 ? (
             <div className="empty-state">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
               </svg>
-              <p>No submissions found</p>
+              <p className="empty-title">No submissions found</p>
+              {hasActiveFilters() ? (
+                <p className="empty-desc">Try adjusting your search or filter criteria.</p>
+              ) : (
+                <p className="empty-desc">No submissions have been received yet.</p>
+              )}
             </div>
           ) : (
             <>
+              {loading && (
+                <div style={{ padding: '8px 16px', background: 'var(--primary-light)', fontSize: 13, color: 'var(--primary)', fontWeight: 500, textAlign: 'center', borderBottom: '1px solid var(--gray-100)' }}>
+                  Refreshing...
+                </div>
+              )}
               <div className="table-wrapper">
                 <table className="submissions-table">
                   <thead>
                     <tr>
+                      <th style={{ width: 3, padding: 0 }}></th>
                       <th>Plot #</th>
                       <th>Applicant</th>
                       <th>National ID</th>
@@ -210,20 +361,46 @@ export default function AllSubmissions() {
                         onClick={() => setSelected(it)}
                         className={selected?.id === it.id ? 'selected' : ''}
                       >
-                        <td>
-                          <span className="plot-badge">{it.plot_number}</span>
+                        <td className="table-row-indicator">
+                          <span className={`status-line ${getStatusLineClass(it.status)}`} />
                         </td>
                         <td>
-                          {[it.first_name, it.last_name].filter(Boolean).join(' ') || '—'}
+                          <span className="plot-badge-large">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                              <circle cx="12" cy="10" r="3" />
+                            </svg>
+                            {it.plot_number}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="applicant-cell">
+                            <div className="applicant-avatar">
+                              {getInitials(it.first_name, it.last_name)}
+                            </div>
+                            <div>
+                              <div className="applicant-name">
+                                {[it.first_name, it.last_name].filter(Boolean).join(' ') || '—'}
+                              </div>
+                              {it.farm_name && (
+                                <div className="applicant-id">{it.farm_name}</div>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="cell-muted">{it.national_id || '—'}</td>
                         <td>
                           <span className={`status-chip ${getStatusClass(it.status)}`}>
+                            <span className={`status-dot ${getStatusDotClass(it.status)}`} />
                             {it.status}
                           </span>
                         </td>
                         <td className="cell-muted">
-                          {new Date(it.created_at).toLocaleDateString()}
+                          {new Date(it.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
                         </td>
                       </tr>
                     ))}
@@ -234,7 +411,7 @@ export default function AllSubmissions() {
               {/* Pagination */}
               <div className="pagination">
                 <span className="pagination-info">
-                  Page {filters.page} of {totalPages} ({total} total)
+                  Showing page <strong>{filters.page}</strong> of <strong>{totalPages}</strong> · <strong>{total}</strong> total submissions
                 </span>
                 <div className="pagination-controls">
                   <button
@@ -242,14 +419,21 @@ export default function AllSubmissions() {
                     disabled={filters.page <= 1}
                     onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}
                   >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
                     Previous
                   </button>
+                  <span className="pagination-page-indicator">{filters.page} / {totalPages}</span>
                   <button
                     className="btn btn-outline btn-sm"
                     disabled={filters.page >= totalPages}
                     onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
                   >
                     Next
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -261,15 +445,23 @@ export default function AllSubmissions() {
         <div className="submissions-detail-panel">
           <div className="panel-header">
             <h2 className="panel-title">Submission Details</h2>
+            {selected && (
+              <button className="close-panel-btn" onClick={() => setSelected(null)} title="Close details">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
           </div>
           {!selected ? (
             <div className="select-prompt">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                 <circle cx="12" cy="12" r="3" />
               </svg>
               <p className="select-title">Select a submission</p>
-              <p className="select-desc">Click on a row to view details and take action.</p>
+              <p className="select-desc">Click on a row to view full details and take action.</p>
             </div>
           ) : (
             <SubmissionDetails submission={selected} onActionDone={onActionDone} />

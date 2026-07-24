@@ -3,6 +3,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
+const { sendWhatsAppMessage } = require('../services/whatsapp');
+
 const whatsappFlowRouter = express.Router();
 
 
@@ -235,23 +237,80 @@ whatsappFlowRouter.post('/', async (req, res) => {
         // Also check if the submitted data contains wa_id or phone number
         const userWaId = data.wa_id || data.phone || data.phone_number || data.tel || extractedWaId || null;
 
-        const submissionData = {
-          plot_number: String(data.plot_number || data.plotNumber || data.plot || '').trim(),
-          first_name: data.first_name || data.firstName || data.given_name || null,
-          last_name: data.last_name || data.lastName || data.family_name || null,
-          farm_name: data.farm_name || data.farmName || null,
-          gender: data.gender || data.sex || null,
-          national_id: data.national_id || data.nationalId || data.id_number || null,
-          wa_id: userWaId,
-          wa_flow_token: flowToken || null,
-          raw_payload: decryptedObject,
-        };
+        // --- Input Format Validation ---
+        const plotNumber = String(data.plot_number || data.plotNumber || data.plot || '').trim();
+        const firstName = data.first_name || data.firstName || data.given_name || null;
+        const lastName = data.last_name || data.lastName || data.family_name || null;
+        const nationalId = data.national_id || data.nationalId || data.id_number || null;
+        const phoneNumber = userWaId;
 
-        if (submissionData.plot_number && (submissionData.first_name || submissionData.last_name)) {
-          const row = await upsertLandSubmission(submissionData);
-          console.log('[/whatsapp-flow] Submission saved from flow:', row?.id);
+        const validationErrors = [];
+
+        // Validate plot_number: required, alphanumeric with dashes
+        if (!plotNumber) {
+          validationErrors.push('Plot number is required.');
+        } else if (!/^[A-Za-z0-9\-/ ]{2,30}$/.test(plotNumber)) {
+          validationErrors.push('Plot number format is invalid. Use letters, numbers, dashes, or slashes.');
+        }
+
+        // Validate national_id: Zimbabwe format XX-XXXXXXX-X-XX or similar
+        if (nationalId && !/^\d{2}-\d{6,8}-\d{1,2}-\d{2}$/.test(nationalId) && !/^\d{6,10}[A-Za-z]?\d{0,2}$/.test(nationalId)) {
+          validationErrors.push('National ID format is invalid. Expected format: 12-3456789-0-12 or similar.');
+        }
+
+        // Validate phone number: must be a number, at least 10 digits
+        if (phoneNumber && !/^\d{10,15}$/.test(phoneNumber.replace(/[^0-9]/g, ''))) {
+          validationErrors.push('Phone number format is invalid.');
+        }
+
+        // If validation errors, return them to the flow screen
+        if (validationErrors.length > 0) {
+          console.log('[/whatsapp-flow] Validation errors:', validationErrors);
+          responseScreen = screen; // Stay on current screen
+          responseDataObj = {
+            status: 'error',
+            errors: validationErrors,
+            message: validationErrors.join('\n'),
+          };
         } else {
-          console.log('[/whatsapp-flow] Incomplete submission data, skipping save');
+          const submissionData = {
+            plot_number: plotNumber,
+            first_name: firstName,
+            last_name: lastName,
+            farm_name: data.farm_name || data.farmName || null,
+            gender: data.gender || data.sex || null,
+            national_id: nationalId,
+            wa_id: userWaId,
+            wa_flow_token: flowToken || null,
+            raw_payload: decryptedObject,
+          };
+
+          if (submissionData.plot_number && (submissionData.first_name || submissionData.last_name)) {
+            const row = await upsertLandSubmission(submissionData);
+            console.log('[/whatsapp-flow] Submission saved from flow:', row?.id);
+
+            // --- Send instant WhatsApp notification ---
+            if (userWaId) {
+              const name = [firstName, lastName].filter(Boolean).join(' ').trim() || 'there';
+              const plot = plotNumber;
+              try {
+                await sendWhatsAppMessage({
+                  toWaId: userWaId,
+                  text: `Hi ${name},\n\nThank you for submitting your land verification for Plot ${plot}. Your application has been received successfully and is currently *Pending Review*.\n\nOur bank representative will review your submission and get back to you via WhatsApp. This usually takes 1-2 business days.\n\nIf you have any questions, please wait for our team to contact you.\n\nThank you for choosing our services.`,
+                });
+                console.log('[/whatsapp-flow] Instant notification sent to:', userWaId);
+              } catch (notifyErr) {
+                console.error('[/whatsapp-flow] Failed to send instant notification:', notifyErr.message);
+              }
+            }
+          } else {
+            console.log('[/whatsapp-flow] Incomplete submission data, skipping save');
+            responseScreen = screen; // Stay on current screen
+            responseDataObj = {
+              status: 'error',
+              message: 'Please fill in your plot number and name to complete the submission.',
+            };
+          }
         }
       } catch (saveErr) {
         console.error('[/whatsapp-flow] Error saving submission:', saveErr.message);
@@ -271,7 +330,7 @@ whatsappFlowRouter.post('/', async (req, res) => {
       responseScreen = 'SUCCESS';
       responseDataObj = {
         status: 'success',
-        message: 'Your land verification has been submitted successfully. A bank representative will review it shortly.',
+        message: '✅ Application Submitted Successfully!\n\nYour land verification details have been received. Your application is now **Pending Review**. A bank representative will review your submission and contact you via WhatsApp.\n\nPlease keep your phone handy for updates.',
       };
     } else if (action === 'ping' || action === 'init') {
       // Health check or initial screen

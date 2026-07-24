@@ -53,7 +53,7 @@ export default function SubmissionDetails({
     setVerifying(true)
     try {
       await api.verifySubmission(submission.id, 'Bank Admin')
-      showToast('success', `Plot ${submission.plot_number} verified successfully! WhatsApp notification sent.`)
+      showToast('success', `✅ Plot ${submission.plot_number} verified successfully! The applicant has been notified via WhatsApp that their land verification is now verified and pending final review.`)
       onActionDone()
     } catch (e: any) {
       const msg = e?.message || 'Failed to verify'
@@ -70,7 +70,7 @@ export default function SubmissionDetails({
     try {
       const reason = rejectReason.trim() || (selectedTemplate !== 'custom' ? selectedTemplate : 'Not verified')
       await api.rejectSubmission(submission.id, reason, 'Bank Admin')
-      showToast('success', `Plot ${submission.plot_number} rejected. WhatsApp notification sent.`)
+      showToast('success', `❌ Plot ${submission.plot_number} has been rejected. The applicant has been notified via WhatsApp with the reason: "${reason}".`)
       onActionDone()
     } catch (e: any) {
       const msg = e?.message || 'Failed to reject'

@@ -26,9 +26,9 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-logo">L</div>
-        <h1 className="login-title">Welcome Back</h1>
-        <p className="login-subtitle">Enter your admin access token to view and verify land submissions.</p>
+        <img src="/zlc-logo.jpg" alt="ZLC Logo" className="login-logo-img" />
+        <h1 className="login-title">ZLC Admin Portal</h1>
+        <p className="login-subtitle">Zimbabwe Land Commission - Enter your admin access token to view and verify land submissions.</p>
 
         <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
