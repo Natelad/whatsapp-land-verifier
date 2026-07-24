@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { api } from '../api'
+import zlcLogo from '../ZLC.jpg'
 
 export default function Login() {
   const [token, setToken] = useState('')
@@ -26,7 +27,7 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <img src="/zlc-logo.jpg" alt="ZLC Logo" className="login-logo-img" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+        <img src={zlcLogo} alt="ZLC Logo" className="login-logo-img" onError={(e) => { e.currentTarget.style.display = 'none' }} />
         <h1 className="login-title">ZLC Admin Portal</h1>
         <p className="login-subtitle">Zimbabwe Land Commission - Enter your admin access token to view and verify land submissions.</p>
 

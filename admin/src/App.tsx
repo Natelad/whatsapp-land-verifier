@@ -3,6 +3,7 @@ import PendingSubmissions from './pages/PendingSubmissions'
 import AllSubmissions from './pages/AllSubmissions'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
+import zlcLogo from './ZLC.jpg'
 
 type Tab = 'dashboard' | 'pending' | 'all'
 
@@ -22,7 +23,7 @@ export default function App() {
     <div className="admin-layout">
       <header className="admin-header">
         <div className="admin-header-left">
-          <img src="/zlc-logo.jpg" alt="ZLC Logo" className="admin-logo-img" />
+          <img src={zlcLogo} alt="ZLC Logo" className="admin-logo-img" />
           <div>
             <div className="admin-header-title">ZLC Admin</div>
             <div className="admin-header-subtitle">Zimbabwe Land Commission Dashboard</div>
