@@ -11,6 +11,10 @@ export type Submission = {
   // Farm details
   farm_name: string | null
   gender: string | null
+  province: string | null
+  district: string | null
+  tenure_type: string | null
+  tenure_type_other: string | null
 
   national_id: string | null
   wa_id: string

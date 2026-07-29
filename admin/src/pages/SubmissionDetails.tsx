@@ -53,7 +53,7 @@ export default function SubmissionDetails({
     setVerifying(true)
     try {
       await api.verifySubmission(submission.id, 'Bank Admin')
-      showToast('success', `✅ Plot ${submission.plot_number} verified successfully! The applicant has been notified via WhatsApp that their land verification is now verified and pending final review.`)
+      showToast('success', `✅ Plot ${submission.plot_number} verified successfully! The applicant has been notified via WhatsApp.`)
       onActionDone()
     } catch (e: any) {
       const msg = e?.message || 'Failed to verify'
@@ -70,7 +70,7 @@ export default function SubmissionDetails({
     try {
       const reason = rejectReason.trim() || (selectedTemplate !== 'custom' ? selectedTemplate : 'Not verified')
       await api.rejectSubmission(submission.id, reason, 'Bank Admin')
-      showToast('success', `❌ Plot ${submission.plot_number} has been rejected. The applicant has been notified via WhatsApp with the reason: "${reason}".`)
+      showToast('success', `❌ Plot ${submission.plot_number} has been rejected. The applicant has been notified via WhatsApp.`)
       onActionDone()
     } catch (e: any) {
       const msg = e?.message || 'Failed to reject'
@@ -144,6 +144,24 @@ export default function SubmissionDetails({
           <span className="detail-field-label">Gender</span>
           <span className="detail-field-value">{submission.gender || '—'}</span>
         </div>
+        <div className="detail-field">
+          <span className="detail-field-label">Province</span>
+          <span className="detail-field-value">{submission.province || '—'}</span>
+        </div>
+        <div className="detail-field">
+          <span className="detail-field-label">District</span>
+          <span className="detail-field-value">{submission.district || '—'}</span>
+        </div>
+        <div className="detail-field">
+          <span className="detail-field-label">Plot Farm Particulars Tenure Type</span>
+          <span className="detail-field-value">{submission.tenure_type || '—'}</span>
+        </div>
+        {submission.tenure_type_other ? (
+          <div className="detail-field">
+            <span className="detail-field-label">Tenure Type Details</span>
+            <span className="detail-field-value">{submission.tenure_type_other}</span>
+          </div>
+        ) : null}
       </div>
 
       {/* Error */}

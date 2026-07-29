@@ -19,7 +19,15 @@ create table if not exists public.land_records (
 create index if not exists land_records_plot_number_idx on public.land_records (plot_number);
 
 -- Incoming WhatsApp Flow submissions awaiting admin verification.
-create type public.land_submission_status as enum ('Pending', 'Verified', 'Rejected');
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type WHERE typname = 'land_submission_status'
+  ) THEN
+    CREATE TYPE public.land_submission_status AS ENUM ('Pending', 'Verified', 'Rejected');
+  END IF;
+END;
+$$;
 
 create table if not exists public.land_submissions (
   id uuid primary key default uuid_generate_v4(),
@@ -34,6 +42,10 @@ create table if not exists public.land_submissions (
   -- Farm details
   farm_name text,
   gender text,
+  province text,
+  district text,
+  tenure_type text,
+  tenure_type_other text,
 
   national_id text,
 
@@ -65,6 +77,11 @@ create table if not exists public.land_submissions (
 create index if not exists land_submissions_plot_number_idx on public.land_submissions (plot_number);
 create index if not exists land_submissions_status_idx on public.land_submissions (status);
 create index if not exists land_submissions_wa_id_idx on public.land_submissions (wa_id);
+
+alter table if exists public.land_submissions add column if not exists province text;
+alter table if exists public.land_submissions add column if not exists district text;
+alter table if exists public.land_submissions add column if not exists tenure_type text;
+alter table if exists public.land_submissions add column if not exists tenure_type_other text;
 
 -- Keep updated_at fresh
 create or replace function public.set_updated_at()

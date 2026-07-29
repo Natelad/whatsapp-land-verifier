@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { upsertLandSubmission } = require('../services/supabase');
 const { sendWhatsAppFlowMessage } = require('../services/whatsapp');
 const { config } = require('../config/env');
+const { normalizeTenureType } = require('../utils/tenureType');
 
 const webhookRouter = express.Router();
 
@@ -84,6 +85,44 @@ function extractSubmissionFromMeta(payload) {
     data?.nationalId ||
     data?.id_number ||
     data?.fields?.national_id;
+
+  const textProvince =
+    data?.province ||
+    data?.province_name ||
+    data?.provinceName ||
+    data?.fields?.province ||
+    data?.fields?.province_name ||
+    data?.fields?.provinceName;
+
+  const textDistrict =
+    data?.district ||
+    data?.district_name ||
+    data?.districtName ||
+    data?.fields?.district ||
+    data?.fields?.district_name ||
+    data?.fields?.districtName;
+
+  const textTenureType = normalizeTenureType(
+    data?.tenure_type ||
+      data?.tenureType ||
+      data?.farm_particulars_tenure_type ||
+      data?.farmParticularsTenureType ||
+      data?.fields?.tenure_type ||
+      data?.fields?.tenureType ||
+      data?.fields?.farm_particulars_tenure_type ||
+      data?.fields?.farmParticularsTenureType
+  );
+
+  const textTenureTypeOther = normalizeTenureType(
+    data?.tenure_type_other ||
+      data?.tenureTypeOther ||
+      data?.other_tenure_type ||
+      data?.otherTenureType ||
+      data?.fields?.tenure_type_other ||
+      data?.fields?.tenureTypeOther ||
+      data?.fields?.other_tenure_type ||
+      data?.fields?.otherTenureType
+  );
 
   // Meta may include contact/phone
   // Depending on webhook type, identifier may be in `message.from` (wa_id) or in contacts.

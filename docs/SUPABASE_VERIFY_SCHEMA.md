@@ -42,6 +42,7 @@ order by ordinal_position;
 
 You should see columns like:
 - id, plot_number, owner_name, national_id
+- farm_name, gender, province, district, tenure_type, tenure_type_other
 - wa_id
 - status
 - verified_at / verified_by

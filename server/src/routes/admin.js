@@ -70,7 +70,7 @@ adminRouter.get('/export', async (req, res) => {
     // Build CSV
     const headers = [
       'ID', 'Plot Number', 'First Name', 'Last Name', 'National ID',
-      'Farm Name', 'Gender', 'WhatsApp ID', 'From Phone',
+      'Farm Name', 'Gender', 'Province', 'District', 'Tenure Type', 'Tenure Type Other', 'WhatsApp ID', 'From Phone',
       'Status', 'Verified By', 'Verified At', 'Rejected By',
       'Rejected At', 'Rejection Reason', 'Created At', 'Updated At'
     ];
@@ -86,6 +86,10 @@ adminRouter.get('/export', async (req, res) => {
         `"${(item.national_id || '').replace(/"/g, '""')}"`,
         `"${(item.farm_name || '').replace(/"/g, '""')}"`,
         `"${(item.gender || '').replace(/"/g, '""')}"`,
+        `"${(item.province || '').replace(/"/g, '""')}"`,
+        `"${(item.district || '').replace(/"/g, '""')}"`,
+        `"${(item.tenure_type || '').replace(/"/g, '""')}"`,
+        `"${(item.tenure_type_other || '').replace(/"/g, '""')}"`,
         `"${(item.wa_id || '').replace(/"/g, '""')}"`,
         `"${(item.from_phone || '').replace(/"/g, '""')}"`,
         item.status,
@@ -175,10 +179,7 @@ adminRouter.post('/submissions/:id/verify', async (req, res) => {
 
     // Notify user
     const toWaId = submission.wa_id;
-    const name = [submission.first_name, submission.last_name].filter(Boolean).join(' ').trim() || 'there';
-    const plot = submission.plot_number;
-
-    const text = `Hi ${name}, your land verification for Plot ${plot} is currently *Verified*. Our team will reach out if we need anything else.`;
+    const text = 'Thank you! Your details have been verified.';
 
     // Best-effort: don't fail the whole request if WhatsApp send fails
     try {
@@ -216,10 +217,7 @@ adminRouter.post('/submissions/:id/reject', async (req, res) => {
 
     // Notify user
     const toWaId = submission.wa_id;
-    const name = [submission.first_name, submission.last_name].filter(Boolean).join(' ').trim() || 'there';
-    const plot = submission.plot_number;
-
-    const text = `Hi ${name}, thank you for submitting details for Plot ${plot}. Your verification request is currently *Rejected*. Reason: ${rejection_reason}.`;
+    const text = 'Thank you for your submission. If the request is rejected, our team will contact you for verification.';
 
     try {
       await sendWhatsAppMessage({ toWaId, text });
