@@ -58,33 +58,12 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
 
   const payload = {
     messaging_product: 'whatsapp',
-    recipient_type: 'individual',
     to: toWaId,
-    type: 'interactive',
-    interactive: {
-      type: 'flow',
-      header: {
-        type: 'text',
-        text: 'Land Verification Form',
-      },
-      body: {
-        text: 'Please fill out the land verification form to proceed.',
-      },
-      footer: {
-        text: 'Powered by Landbot',
-      },
-      action: {
-        name: 'flow',
-        parameters: {
-          flow_message_version: '3',
-          flow_token: flowToken,
-          flow_id: flowId,
-          flow_cta: 'Open Form',
-          flow_action: 'navigate',
-          flow_action_payload: {
-            screen: 'GREETING',
-          },
-        },
+    type: 'template',
+    template: {
+      name: 'land_verification_form',
+      language: {
+        code: 'en_US',
       },
     },
   };
@@ -105,6 +84,8 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
     const msg = body?.error?.message || `WhatsApp flow send failed with status ${res.status}`;
     throw new Error(msg);
   }
+
+  console.log('[WhatsApp Flow] Template message sent successfully to', toWaId, 'response:', JSON.stringify(body));
   return body;
 }
 
