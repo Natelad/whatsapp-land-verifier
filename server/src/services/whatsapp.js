@@ -54,16 +54,16 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
   if (!flowId) throw new Error('sendWhatsAppFlowMessage: flowId is required');
   if (!flowToken) throw new Error('sendWhatsAppFlowMessage: flowToken is required');
 
-  const url = `https://graph.facebook.com/v20.0/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  const url = `https://graph.facebook.com/v${config.WHATSAPP_GRAPH_API_VERSION}/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
   const payload = {
     messaging_product: 'whatsapp',
     to: toWaId,
     type: 'template',
     template: {
-      name: 'land_verification_form',
+      name: config.WHATSAPP_TEMPLATE_NAME,
       language: {
-        code: 'en_US',
+        code: config.WHATSAPP_TEMPLATE_LANGUAGE_CODE,
       },
     },
   };

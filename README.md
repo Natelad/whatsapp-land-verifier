@@ -201,6 +201,10 @@ WHATSAPP_PHONE_NUMBER_ID=123456789012345
 # Graph API version (default: 20.0)
 WHATSAPP_GRAPH_API_VERSION=20.0
 
+# WhatsApp message template settings
+WHATSAPP_TEMPLATE_NAME=land_verification_form
+WHATSAPP_TEMPLATE_LANGUAGE_CODE=en_US
+
 # Your Flow ID from WhatsApp Manager (default provided, replace with yours)
 WHATSAPP_FLOW_ID=1030716066135048
 
@@ -225,6 +229,8 @@ PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggS
 | `WHATSAPP_TOKEN` | **Yes** | WhatsApp Cloud API access token |
 | `WHATSAPP_PHONE_NUMBER_ID` | **Yes** | Phone number ID for sending messages |
 | `WHATSAPP_GRAPH_API_VERSION` | No | Meta Graph API version (default: 20.0) |
+| `WHATSAPP_TEMPLATE_NAME` | No | WhatsApp template name to send, e.g. `land_verification_form` |
+| `WHATSAPP_TEMPLATE_LANGUAGE_CODE` | No | WhatsApp template language code, e.g. `en_US` |
 | `WHATSAPP_FLOW_ID` | No | WhatsApp Flow ID (default: 1030716066135048) |
 | `ADMIN_TOKEN` | No (but **recommended**) | Secret token for admin API protection |
 | `PRIVATE_KEY` | **Yes** (production) / No (local) | RSA private key for Flow decryption |
