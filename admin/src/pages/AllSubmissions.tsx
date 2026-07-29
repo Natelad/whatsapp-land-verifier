@@ -260,14 +260,7 @@ export default function AllSubmissions() {
           </svg>
           <input
             type="text"
-            placeholder="Search by name, ID, plot number, phone..."
-            value={searchInput}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-        </div>
-
-        <select
+              placeholder="Search by name, ID, plot number, province, district, tenure type, phone..."
           value={filters.status}
           onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value, page: 1 }))}
         >
@@ -384,6 +377,12 @@ export default function AllSubmissions() {
                               </div>
                               {it.farm_name && (
                                 <div className="applicant-id">{it.farm_name}</div>
+                              )}
+                              {(it.province || it.district || it.tenure_type) && (
+                                <div className="applicant-id" style={{ color: 'var(--gray-500)', fontSize: 12, marginTop: 2 }}>
+                                  {it.province || it.district ? `${it.province || ''}${it.province && it.district ? ' / ' : ''}${it.district || ''}` : ''}
+                                  {it.province || it.district ? (it.tenure_type ? ` · ${it.tenure_type}` : '') : it.tenure_type || ''}
+                                </div>
                               )}
                             </div>
                           </div>

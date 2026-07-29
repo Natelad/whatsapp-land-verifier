@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { sendWhatsAppMessage } = require('../services/whatsapp');
+const { normalizeTenureType } = require('../utils/tenureType');
 
 const whatsappFlowRouter = express.Router();
 
@@ -242,6 +243,14 @@ whatsappFlowRouter.post('/', async (req, res) => {
         const firstName = data.first_name || data.firstName || data.given_name || null;
         const lastName = data.last_name || data.lastName || data.family_name || null;
         const nationalId = data.national_id || data.nationalId || data.id_number || null;
+        const province = data.province || data.province_name || data.provinceName || data.fields?.province || data.fields?.province_name || data.fields?.provinceName || null;
+        const district = data.district || data.district_name || data.districtName || data.fields?.district || data.fields?.district_name || data.fields?.districtName || null;
+        const tenureType = normalizeTenureType(
+          data.tenure_type || data.tenureType || data.farm_particulars_tenure_type || data.farmParticularsTenureType || data.fields?.tenure_type || data.fields?.tenureType || data.fields?.farm_particulars_tenure_type || data.fields?.farmParticularsTenureType || null
+        );
+        const tenureTypeOther = normalizeTenureType(
+          data.tenure_type_other || data.tenureTypeOther || data.other_tenure_type || data.otherTenureType || data.fields?.tenure_type_other || data.fields?.tenureTypeOther || data.fields?.other_tenure_type || data.fields?.otherTenureType || null
+        );
         const phoneNumber = userWaId;
 
         const validationErrors = [];
@@ -279,6 +288,10 @@ whatsappFlowRouter.post('/', async (req, res) => {
             last_name: lastName,
             farm_name: data.farm_name || data.farmName || null,
             gender: data.gender || data.sex || null,
+            province,
+            district,
+            tenure_type: tenureType,
+            tenure_type_other: tenureTypeOther,
             national_id: nationalId,
             wa_id: userWaId,
             wa_flow_token: flowToken || null,
@@ -292,11 +305,10 @@ whatsappFlowRouter.post('/', async (req, res) => {
             // --- Send instant WhatsApp notification ---
             if (userWaId) {
               const name = [firstName, lastName].filter(Boolean).join(' ').trim() || 'there';
-              const plot = plotNumber;
               try {
                 await sendWhatsAppMessage({
                   toWaId: userWaId,
-                  text: `Hi ${name},\n\nThank you for submitting your land verification for Plot ${plot}. Your application has been received successfully and is currently *Pending Review*.\n\nOur bank representative will review your submission and get back to you via WhatsApp. This usually takes 1-2 business days.\n\nIf you have any questions, please wait for our team to contact you.\n\nThank you for choosing our services.`,
+                  text: 'Thank you for the verification. We’ll let you know once the process is complete.',
                 });
                 console.log('[/whatsapp-flow] Instant notification sent to:', userWaId);
               } catch (notifyErr) {
@@ -330,7 +342,7 @@ whatsappFlowRouter.post('/', async (req, res) => {
       responseScreen = 'SUCCESS';
       responseDataObj = {
         status: 'success',
-        message: '✅ Application Submitted Successfully!\n\nYour land verification details have been received. Your application is now **Pending Review**. A bank representative will review your submission and contact you via WhatsApp.\n\nPlease keep your phone handy for updates.',
+        message: 'Thank you for the verification. We’ll let you know once the process is complete.',
       };
     } else if (action === 'ping' || action === 'init') {
       // Health check or initial screen

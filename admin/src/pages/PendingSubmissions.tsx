@@ -105,6 +105,12 @@ export default function PendingSubmissions() {
                         ? `${it.first_name || ''} ${it.last_name || ''}`.trim()
                         : '—'}
                     </div>
+                    {(it.province || it.district || it.tenure_type) && (
+                      <div className="submission-meta-secondary">
+                        {it.province || it.district ? `${it.province || ''}${it.province && it.district ? ' / ' : ''}${it.district || ''}` : ''}
+                        {it.province || it.district ? (it.tenure_type ? ` · ${it.tenure_type}` : '') : it.tenure_type || ''}
+                      </div>
+                    )}
                   </div>
                   <div className="submission-item-footer">
                     <span className="submission-id-label">{it.national_id || 'No ID'}</span>

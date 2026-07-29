@@ -59,7 +59,7 @@ After running, confirm these objects exist in your Supabase project:
 
 **Table: `public.land_submissions`**
 - Stores incoming WhatsApp Flow submissions awaiting admin review
-- Columns: `id` (UUID), `plot_number`, `first_name`, `last_name`, `farm_name`, `gender`, `national_id`, `wa_id`, `from_phone`, `status`, `verified_by`, `verified_at`, `rejected_by`, `rejected_at`, `rejection_reason`, `wa_message_id`, `wa_flow_token`, `raw_payload`, `created_at`, `updated_at`
+- Columns: `id` (UUID), `plot_number`, `first_name`, `last_name`, `farm_name`, `gender`, `province`, `district`, `tenure_type`, `tenure_type_other`, `national_id`, `wa_id`, `from_phone`, `status`, `verified_by`, `verified_at`, `rejected_by`, `rejected_at`, `rejection_reason`, `wa_message_id`, `wa_flow_token`, `raw_payload`, `created_at`, `updated_at`
 - Status constraint: `'Pending' | 'Verified' | 'Rejected'`
 
 **Table: `public.land_records`** (optional)

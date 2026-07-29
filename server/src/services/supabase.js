@@ -11,6 +11,10 @@ async function upsertLandSubmission({
   last_name,
   farm_name,
   gender,
+  province,
+  district,
+  tenure_type,
+  tenure_type_other,
   national_id,
   wa_id,
   from_phone,
@@ -37,6 +41,10 @@ async function upsertLandSubmission({
         last_name: last_name || existing.last_name,
         farm_name: farm_name || existing.farm_name,
         gender: gender || existing.gender,
+        province: province || existing.province,
+        district: district || existing.district,
+        tenure_type: tenure_type || existing.tenure_type,
+        tenure_type_other: tenure_type_other || existing.tenure_type_other,
         national_id: national_id || existing.national_id,
         from_phone: from_phone || existing.from_phone,
         wa_message_id: wa_message_id || existing.wa_message_id,
@@ -110,7 +118,7 @@ async function listAllSubmissions({ status, search, date_from, date_to, sort_by,
   if (search && search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(
-      `plot_number.ilike.${term},first_name.ilike.${term},last_name.ilike.${term},national_id.ilike.${term},wa_id.ilike.${term},farm_name.ilike.${term},from_phone.ilike.${term}`
+      `plot_number.ilike.${term},first_name.ilike.${term},last_name.ilike.${term},national_id.ilike.${term},wa_id.ilike.${term},farm_name.ilike.${term},province.ilike.${term},district.ilike.${term},tenure_type.ilike.${term},tenure_type_other.ilike.${term},from_phone.ilike.${term}`
     );
   }
 

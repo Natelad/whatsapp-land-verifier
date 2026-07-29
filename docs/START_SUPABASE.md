@@ -8,6 +8,7 @@
 
 After running, confirm:
 - Table exists: `public.land_submissions`
+- `public.land_submissions` includes columns: `province`, `district`, `tenure_type`, `tenure_type_other`
 - (Optional) Table exists: `public.land_records`
 
 ## 2) Confirm schema integrity
