@@ -24,6 +24,12 @@ try {
 const app = express()
 app.use(helmet())
 
+// Log every incoming request so webhook traffic can be confirmed in Render logs.
+app.use((req, res, next) => {
+  console.log('[Request] incoming', req.method, req.originalUrl)
+  next()
+})
+
 // CORS (needed for browser preflight and for x-admin-token header)
 app.use(
   cors({

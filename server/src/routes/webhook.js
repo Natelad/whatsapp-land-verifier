@@ -148,7 +148,12 @@ function extractSubmissionFromMeta(payload) {
   };
 }
 
-webhookRouter.get('/whatsapp', (req, res) => {
+webhookRouter.use((req, res, next) => {
+  console.log('[Webhook] Incoming request:', req.method, req.originalUrl);
+  next();
+});
+
+webhookRouter.get(['/', '/whatsapp'], (req, res) => {
   // Meta webhook verification handshake:
   // ?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...
   const mode = req.query['hub.mode'];
@@ -195,7 +200,7 @@ function extractTextMessage(payload) {
   };
 }
 
-webhookRouter.post('/whatsapp', async (req, res) => {
+webhookRouter.post(['/', '/whatsapp'], async (req, res) => {
   try {
     // Always respond with 200 to Meta to acknowledge receipt
     // (Meta will retry if we don't respond quickly)
