@@ -50,7 +50,7 @@ async function sendWhatsAppMessage({ toWaId, text }) {
  * @param {string} params.flowToken - A unique flow token (session identifier)
  * @param {Object} params.flowData - Optional data to pass to the flow's first screen
  */
-async function buildTemplatePayload({ toWaId, languageCode, headerType, headerImageUrl, headerText, bodyText, footerText }) {
+async function buildTemplatePayload({ toWaId, languageCode, headerType, headerImageUrl, headerText, bodyText, footerText, buttonFlowToken }) {
   const components = [];
   const normalizedHeaderType = String(headerType || '').trim().toUpperCase();
 
@@ -102,6 +102,23 @@ async function buildTemplatePayload({ toWaId, languageCode, headerType, headerIm
     });
   }
 
+  if (buttonFlowToken) {
+    components.push({
+      type: 'button',
+      sub_type: 'flow',
+      index: '0',
+      parameters: [
+        {
+          type: 'action',
+          action: {
+            flow_token: buttonFlowToken,
+            flow_action_data: {},
+          },
+        },
+      ],
+    });
+  }
+
   const payload = {
     messaging_product: 'whatsapp',
     to: toWaId,
@@ -127,25 +144,55 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
   if (!flowToken) throw new Error('sendWhatsAppFlowMessage: flowToken is required');
 
   const languageCode = config.WHATSAPP_TEMPLATE_LANGUAGE_CODE;
-  const envHeaderType = String(config.WHATSAPP_TEMPLATE_HEADER_TYPE || '').trim().toUpperCase();
-  const envHeaderImageUrl = String(config.WHATSAPP_TEMPLATE_HEADER_IMAGE_URL || '').trim();
-  const envHeaderText = String(config.WHATSAPP_TEMPLATE_HEADER_TEXT || '').trim();
-  const envBodyText = String(config.WHATSAPP_TEMPLATE_BODY_TEXT || '').trim();
-  const envFooterText = String(config.WHATSAPP_TEMPLATE_FOOTER_TEXT || '').trim();
+  const headerImageUrl = String(config.WHATSAPP_TEMPLATE_HEADER_IMAGE_URL || 'https://www.zlc.co.zw/img/logo1.png').trim();
+  const bodyText = String(config.WHATSAPP_TEMPLATE_BODY_TEXT || 'Applicant').trim() || 'Applicant';
 
-  const inferredHeaderType = envHeaderType
-    || (envHeaderImageUrl ? 'IMAGE' : '')
-    || (envHeaderText ? 'TEXT' : '');
-
-  const payload = await buildTemplatePayload({
-    toWaId,
-    languageCode,
-    headerType: inferredHeaderType,
-    headerImageUrl: envHeaderImageUrl,
-    headerText: envHeaderText,
-    bodyText: envBodyText,
-    footerText: envFooterText,
-  });
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: toWaId,
+    type: 'template',
+    template: {
+      name: config.WHATSAPP_TEMPLATE_NAME,
+      language: {
+        code: languageCode,
+      },
+      components: [
+        {
+          type: 'header',
+          parameters: [
+            {
+              type: 'image',
+              image: {
+                link: headerImageUrl,
+              },
+            },
+          ],
+        },
+        {
+          type: 'body',
+          parameters: [
+            {
+              type: 'text',
+              text: bodyText,
+            },
+          ],
+        },
+        {
+          type: 'button',
+          sub_type: 'flow',
+          index: '0',
+          parameters: [
+            {
+              type: 'action',
+              action: {
+                flow_token: flowToken,
+              },
+            },
+          ],
+        },
+      ],
+    },
+  };
 
   const { res, body } = await postWhatsAppPayload(payload);
   if (!res.ok) {
