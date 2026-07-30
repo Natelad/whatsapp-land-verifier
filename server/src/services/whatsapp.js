@@ -50,19 +50,26 @@ async function sendWhatsAppMessage({ toWaId, text }) {
  * @param {string} params.flowToken - A unique flow token (session identifier)
  * @param {Object} params.flowData - Optional data to pass to the flow's first screen
  */
-async function buildTemplatePayload({ toWaId, languageCode, headerType, headerImageUrl, headerText, bodyText, footerText, buttonFlowToken }) {
+async function buildTemplatePayload({ toWaId, languageCode, headerType, headerImageUrl, headerImageId, headerText, bodyText, footerText, buttonFlowToken }) {
   const components = [];
   const normalizedHeaderType = String(headerType || '').trim().toUpperCase();
+  const normalizedHeaderImageId = String(headerImageId || '').trim();
+  const normalizedHeaderImageUrl = String(headerImageUrl || '').trim();
 
-  if (normalizedHeaderType === 'IMAGE' && headerImageUrl) {
+  if (normalizedHeaderType === 'IMAGE' && (normalizedHeaderImageId || normalizedHeaderImageUrl)) {
+    const imagePayload = {};
+    if (normalizedHeaderImageId) {
+      imagePayload.id = normalizedHeaderImageId;
+    } else {
+      imagePayload.link = normalizedHeaderImageUrl;
+    }
+
     components.push({
       type: 'header',
       parameters: [
         {
           type: 'image',
-          image: {
-            link: headerImageUrl,
-          },
+          image: imagePayload,
         },
       ],
     });
@@ -144,6 +151,7 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
   if (!flowToken) throw new Error('sendWhatsAppFlowMessage: flowToken is required');
 
   const languageCode = config.WHATSAPP_TEMPLATE_LANGUAGE_CODE;
+  const headerImageId = String(config.WHATSAPP_TEMPLATE_HEADER_IMAGE_ID || '').trim();
   const headerImageUrl = String(config.WHATSAPP_TEMPLATE_HEADER_IMAGE_URL || 'https://www.zlc.co.zw/img/logo1.png').trim();
   const bodyText = String(config.WHATSAPP_TEMPLATE_BODY_TEXT || 'Applicant').trim() || 'Applicant';
 
@@ -162,9 +170,9 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
           parameters: [
             {
               type: 'image',
-              image: {
-                link: headerImageUrl,
-              },
+              image: headerImageId
+                ? { id: headerImageId }
+                : { link: headerImageUrl },
             },
           ],
         },

@@ -206,6 +206,7 @@ WHATSAPP_TEMPLATE_NAME=land_verification_form
 # Use default English if that is the language configured in WhatsApp Manager.
 WHATSAPP_TEMPLATE_LANGUAGE_CODE=en
 WHATSAPP_TEMPLATE_HEADER_TYPE=IMAGE
+WHATSAPP_TEMPLATE_HEADER_IMAGE_ID=
 WHATSAPP_TEMPLATE_HEADER_IMAGE_URL=https://www.zlc.co.zw/img/logo1.png
 WHATSAPP_TEMPLATE_BODY_TEXT=Applicant
 WHATSAPP_TEMPLATE_FOOTER_TEXT=
@@ -236,6 +237,7 @@ PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggS
 | `WHATSAPP_GRAPH_API_VERSION` | No | Meta Graph API version (default: 20.0) |
 | `WHATSAPP_TEMPLATE_NAME` | No | WhatsApp template name to send, e.g. `land_verification_form` |
 | `WHATSAPP_TEMPLATE_LANGUAGE_CODE` | No | WhatsApp template language code, e.g. `en_US` |
+| `WHATSAPP_TEMPLATE_HEADER_IMAGE_ID` | No | Optional WhatsApp uploaded media ID for template header images |
 | `WHATSAPP_FLOW_ID` | No | WhatsApp Flow ID (default: 1030716066135048) |
 | `ADMIN_TOKEN` | No (but **recommended**) | Secret token for admin API protection |
 | `PRIVATE_KEY` | **Yes** (production) / No (local) | RSA private key for Flow decryption |
