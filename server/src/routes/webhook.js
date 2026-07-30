@@ -37,6 +37,7 @@ function extractSubmissionFromMeta(payload) {
 
   function normalizeFlowData(rawData) {
     if (!rawData) return {};
+
     if (Array.isArray(rawData)) {
       return rawData.reduce((acc, item) => {
         if (!item || typeof item !== 'object') return acc;
@@ -48,7 +49,8 @@ function extractSubmissionFromMeta(payload) {
           item.field_name ||
           item.field_id ||
           item?.metadata?.name ||
-          item?.payload?.name;
+          item?.payload?.name ||
+          item.type;
 
         let value = item.value ?? item.text ?? item?.payload?.text ?? item?.payload?.value;
         if (value && typeof value === 'object') {
@@ -66,10 +68,21 @@ function extractSubmissionFromMeta(payload) {
         return acc;
       }, {});
     }
-    return rawData;
+
+    if (typeof rawData === 'object') {
+      if (rawData.fields) {
+        return normalizeFlowData(rawData.fields);
+      }
+      if (rawData.field_data) {
+        return normalizeFlowData(rawData.field_data);
+      }
+      return rawData;
+    }
+
+    return {};
   }
 
-  let data = normalizeFlowData(flow?.submission?.data || flow?.submission || {});
+  let data = normalizeFlowData(flow?.submission?.data || flow?.submission || flow?.submission?.fields || flow?.submission?.field_data || {});
   if (Array.isArray(data)) {
     data = normalizeFlowData(data);
   }
@@ -165,6 +178,8 @@ function extractSubmissionFromMeta(payload) {
   // Depending on webhook type, identifier may be in `message.from` (wa_id) or in contacts.
   const from_phone =
     message?.from ||
+    message?.contacts?.[0]?.wa_id ||
+    message?.contacts?.[0]?.phone?.number ||
     value?.contacts?.[0]?.wa_id ||
     value?.contacts?.[0]?.phone?.number ||
     null;
@@ -176,6 +191,10 @@ function extractSubmissionFromMeta(payload) {
     message?.contacts?.[0]?.phone?.number ||
     value?.contacts?.[0]?.wa_id ||
     value?.contacts?.[0]?.phone?.number ||
+    data?.wa_id ||
+    data?.phone ||
+    data?.phone_number ||
+    data?.tel ||
     null;
 
   // wa_id is required for replying; we also store raw payload for later debugging
