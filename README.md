@@ -413,6 +413,8 @@ When a user sends any text message (e.g. "hi") to your WhatsApp number:
 - If the payload is a **Flow submission** (contains interactive flow data), backend extracts `plot_number`, `first_name`, `last_name`, `national_id`, `farm_name`, `gender`, etc. and persists a `land_submissions` row with status `Pending`
 - Always responds `200 OK` immediately, then processes asynchronously
 
+> Note: completed WhatsApp Flow form submissions are delivered to the encrypted endpoint at `/whatsapp-flow`, not to `/webhook/whatsapp`.
+>
 ### WhatsApp Flows (Encrypted Data Exchange)
 
 | Method | Endpoint | Description | Auth |
