@@ -156,6 +156,18 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
   const flowCta = String(config.WHATSAPP_FLOW_ACTION_CTA || 'View Flow').trim() || 'View Flow';
   const flowStartScreen = String(config.WHATSAPP_FLOW_START_SCREEN || '').trim();
 
+  const actionParameters = {
+    flow_message_version: '3',
+    flow_token: flowToken,
+    flow_id: flowId,
+    flow_cta: flowCta,
+    flow_action: 'navigate',
+  };
+
+  if (flowStartScreen) {
+    actionParameters.flow_action_payload = { screen: flowStartScreen };
+  }
+
   const interactive = {
     type: 'flow',
     body: {
@@ -166,14 +178,7 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
     },
     action: {
       name: 'flow',
-      parameters: {
-        flow_message_version: '3',
-        flow_token: flowToken,
-        flow_id: flowId,
-        flow_cta: flowCta,
-        flow_action: 'navigate',
-        flow_action_payload: flowStartScreen ? { screen: flowStartScreen } : {},
-      },
+      parameters: actionParameters,
     },
   };
 
