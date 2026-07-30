@@ -35,8 +35,45 @@ function extractSubmissionFromMeta(payload) {
   const flow = message?.interactive?.flow;
   const flow_token = flow?.token;
 
-  // Fields can be in flow.submission.data
-  const data = flow?.submission?.data || flow?.submission || {};
+  function normalizeFlowData(rawData) {
+    if (!rawData) return {};
+    if (Array.isArray(rawData)) {
+      return rawData.reduce((acc, item) => {
+        if (!item || typeof item !== 'object') return acc;
+
+        const key =
+          item.name ||
+          item.id ||
+          item.field ||
+          item.field_name ||
+          item.field_id ||
+          item?.metadata?.name ||
+          item?.payload?.name;
+
+        let value = item.value ?? item.text ?? item?.payload?.text ?? item?.payload?.value;
+        if (value && typeof value === 'object') {
+          value =
+            value.text ??
+            value.value ??
+            value.display_text ??
+            value.number ??
+            JSON.stringify(value);
+        }
+
+        if (key && value !== undefined) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+    }
+    return rawData;
+  }
+
+  let data = normalizeFlowData(flow?.submission?.data || flow?.submission || {});
+  if (Array.isArray(data)) {
+    data = normalizeFlowData(data);
+  }
+
   const textPlot =
     data?.plot_number ||
     data?.plotNumber ||
@@ -132,9 +169,12 @@ function extractSubmissionFromMeta(payload) {
     value?.contacts?.[0]?.phone?.number ||
     null;
 
+  // wa_id may also appear in contacts or in flow submission payload fields
+  const inferredWaId = from || value?.contacts?.[0]?.wa_id || value?.contacts?.[0]?.phone?.number || null;
+
   // wa_id is required for replying; we also store raw payload for later debugging
   return {
-    wa_id: from || null,
+    wa_id: inferredWaId || null,
     from_phone,
     first_name: textFirstName || null,
     last_name: textLastName || null,
