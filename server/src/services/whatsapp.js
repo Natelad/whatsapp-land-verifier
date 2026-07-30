@@ -66,6 +66,17 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
       language: {
         code: languageCode,
       },
+      components: [
+        {
+          type: 'body',
+          parameters: [
+            {
+              type: 'text',
+              text: config.WHATSAPP_TEMPLATE_BODY_TEXT || 'Applicant',
+            },
+          ],
+        },
+      ],
     },
   };
 
