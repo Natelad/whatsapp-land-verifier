@@ -170,7 +170,13 @@ function extractSubmissionFromMeta(payload) {
     null;
 
   // wa_id may also appear in contacts or in flow submission payload fields
-  const inferredWaId = from || value?.contacts?.[0]?.wa_id || value?.contacts?.[0]?.phone?.number || null;
+  const inferredWaId =
+    from ||
+    message?.contacts?.[0]?.wa_id ||
+    message?.contacts?.[0]?.phone?.number ||
+    value?.contacts?.[0]?.wa_id ||
+    value?.contacts?.[0]?.phone?.number ||
+    null;
 
   // wa_id is required for replying; we also store raw payload for later debugging
   return {
@@ -286,6 +292,8 @@ webhookRouter.post(['/', '/whatsapp'], async (req, res) => {
           farm_name,
           gender,
           national_id,
+          province,
+          district,
           wa_message_id,
           wa_flow_token,
           from_phone,
@@ -296,18 +304,25 @@ webhookRouter.post(['/', '/whatsapp'], async (req, res) => {
           console.warn('[Webhook] Missing wa_id in flow submission');
           return;
         }
-        if (!plot_number) {
-          console.warn('[Webhook] Missing plot_number in flow submission');
+
+        if (!plot_number && !first_name && !last_name && !national_id && !farm_name && !gender && !province && !district) {
+          console.warn('[Webhook] No meaningful flow submission data found; skipping save');
           return;
         }
 
+        if (!plot_number) {
+          console.warn('[Webhook] Missing plot_number in flow submission; saving partial submission');
+        }
+
         const row = await upsertLandSubmission({
-          plot_number: String(plot_number).trim(),
+          plot_number: plot_number ? String(plot_number).trim() : null,
           first_name: first_name ? String(first_name).trim() : null,
           last_name: last_name ? String(last_name).trim() : null,
           farm_name: farm_name ? String(farm_name).trim() : null,
           gender: gender ? String(gender).trim() : null,
           national_id: national_id ? String(national_id).trim() : null,
+          province: province ? String(province).trim() : null,
+          district: district ? String(district).trim() : null,
           wa_id: String(wa_id).trim(),
           from_phone: from_phone ? String(from_phone).trim() : null,
           wa_message_id,
