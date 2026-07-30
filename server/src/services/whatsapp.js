@@ -6,22 +6,8 @@ function requireEnv(name) {
   return v;
 }
 
-async function sendWhatsAppMessage({ toWaId, text }) {
-  if (!toWaId) throw new Error('sendWhatsAppMessage: toWaId is required');
-  if (!text) throw new Error('sendWhatsAppMessage: text is required');
-
-  // Meta Cloud API call
-  // POST https://graph.facebook.com/{version}/{WABA_PHONE_NUMBER_ID}/messages
-  // with Bearer token.
-  const url = `https://graph.facebook.com/v20.0/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
-
-  const payload = {
-    messaging_product: 'whatsapp',
-    to: toWaId,
-    type: 'text',
-    text: { body: text },
-  };
-
+async function postWhatsAppPayload(payload) {
+  const url = `https://graph.facebook.com/v${config.WHATSAPP_GRAPH_API_VERSION}/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -32,6 +18,21 @@ async function sendWhatsAppMessage({ toWaId, text }) {
   });
 
   const body = await res.json().catch(() => ({}));
+  return { res, body };
+}
+
+async function sendWhatsAppMessage({ toWaId, text }) {
+  if (!toWaId) throw new Error('sendWhatsAppMessage: toWaId is required');
+  if (!text) throw new Error('sendWhatsAppMessage: text is required');
+
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: toWaId,
+    type: 'text',
+    text: { body: text },
+  };
+
+  const { res, body } = await postWhatsAppPayload(payload);
   if (!res.ok) {
     const msg = body?.error?.message || `WhatsApp send failed with status ${res.status}`;
     throw new Error(msg);
@@ -54,7 +55,7 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
   if (!flowId) throw new Error('sendWhatsAppFlowMessage: flowId is required');
   if (!flowToken) throw new Error('sendWhatsAppFlowMessage: flowToken is required');
 
-  const url = `https://graph.facebook.com/v${config.WHATSAPP_GRAPH_API_VERSION}/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  const languageCode = config.WHATSAPP_TEMPLATE_LANGUAGE_CODE;
 
   const payload = {
     messaging_product: 'whatsapp',
@@ -63,21 +64,12 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
     template: {
       name: config.WHATSAPP_TEMPLATE_NAME,
       language: {
-        code: config.WHATSAPP_TEMPLATE_LANGUAGE_CODE,
+        code: languageCode,
       },
     },
   };
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.WHATSAPP_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const body = await res.json().catch(() => ({}));
+  const { res, body } = await postWhatsAppPayload(payload);
   if (!res.ok) {
     console.error('[WhatsApp Flow] Full error response:', JSON.stringify(body, null, 2));
     console.error('[WhatsApp Flow] Request payload sent:', JSON.stringify(payload, null, 2));
@@ -85,7 +77,7 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
     throw new Error(msg);
   }
 
-  console.log('[WhatsApp Flow] Template message sent successfully to', toWaId, 'response:', JSON.stringify(body));
+  console.log('[WhatsApp Flow] Template message sent successfully to', toWaId, 'language:', languageCode, 'response:', JSON.stringify(body));
   return body;
 }
 

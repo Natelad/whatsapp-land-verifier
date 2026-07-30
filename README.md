@@ -203,7 +203,8 @@ WHATSAPP_GRAPH_API_VERSION=20.0
 
 # WhatsApp message template settings
 WHATSAPP_TEMPLATE_NAME=land_verification_form
-WHATSAPP_TEMPLATE_LANGUAGE_CODE=en_US
+# For Zimbabwe WhatsApp numbers, use en_ZW unless your template is available in another locale.
+WHATSAPP_TEMPLATE_LANGUAGE_CODE=en_ZW
 
 # Your Flow ID from WhatsApp Manager (default provided, replace with yours)
 WHATSAPP_FLOW_ID=1030716066135048

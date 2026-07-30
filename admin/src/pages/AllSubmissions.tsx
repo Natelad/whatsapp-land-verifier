@@ -260,7 +260,13 @@ export default function AllSubmissions() {
           </svg>
           <input
             type="text"
-              placeholder="Search by name, ID, plot number, province, district, tenure type, phone..."
+            placeholder="Search by name, ID, plot number, province, district, tenure type, phone..."
+            value={filters.search}
+            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value, page: 1 }))}
+          />
+        </div>
+
+        <select
           value={filters.status}
           onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value, page: 1 }))}
         >

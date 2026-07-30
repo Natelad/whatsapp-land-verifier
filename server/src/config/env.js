@@ -20,7 +20,8 @@ const config = {
   WHATSAPP_TOKEN: required('WHATSAPP_TOKEN'),
   WHATSAPP_PHONE_NUMBER_ID: required('WHATSAPP_PHONE_NUMBER_ID'),
   WHATSAPP_TEMPLATE_NAME: process.env.WHATSAPP_TEMPLATE_NAME || 'land_verification_form',
-  WHATSAPP_TEMPLATE_LANGUAGE_CODE: process.env.WHATSAPP_TEMPLATE_LANGUAGE_CODE || 'en_US',
+  // Use the exact template language configured in WhatsApp Manager.
+  WHATSAPP_TEMPLATE_LANGUAGE_CODE: process.env.WHATSAPP_TEMPLATE_LANGUAGE_CODE || 'en',
 
   // WhatsApp Flows - the Flow ID from WhatsApp Manager
   WHATSAPP_FLOW_ID: process.env.WHATSAPP_FLOW_ID || '1030716066135048',
