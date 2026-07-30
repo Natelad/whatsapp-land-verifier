@@ -213,6 +213,11 @@ WHATSAPP_TEMPLATE_FOOTER_TEXT=
 
 # Your Flow ID from WhatsApp Manager (default provided, replace with yours)
 WHATSAPP_FLOW_ID=1030716066135048
+WHATSAPP_FLOW_HEADER_IMAGE_URL=
+WHATSAPP_FLOW_BODY_TEXT=Hello! 👋\n\nPlease tap the "View Flow" button below to begin your land verification process. Ensure you have your property details ready.
+WHATSAPP_FLOW_FOOTER_TEXT=Thank you! Powered by NA
+WHATSAPP_FLOW_ACTION_CTA=View Flow
+WHATSAPP_FLOW_START_SCREEN=SCREEN_1
 
 # === OPTIONAL: Admin Security ===
 # If set, admin endpoints require this token in x-admin-token header.
@@ -238,7 +243,12 @@ PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggS
 | `WHATSAPP_TEMPLATE_NAME` | No | WhatsApp template name to send, e.g. `land_verification_form` |
 | `WHATSAPP_TEMPLATE_LANGUAGE_CODE` | No | WhatsApp template language code, e.g. `en_US` |
 | `WHATSAPP_TEMPLATE_HEADER_IMAGE_ID` | No | Optional WhatsApp uploaded media ID for template header images |
+| `WHATSAPP_FLOW_HEADER_IMAGE_URL` | No | Optional image URL for interactive flow header; omit if unstable |
+| `WHATSAPP_FLOW_BODY_TEXT` | No | Body text for the interactive flow launch message |
+| `WHATSAPP_FLOW_FOOTER_TEXT` | No | Footer text for the interactive flow launch message |
 | `WHATSAPP_FLOW_ID` | No | WhatsApp Flow ID (default: 1030716066135048) |
+| `WHATSAPP_FLOW_ACTION_CTA` | No | Button text for interactive flow launch (default: `View Flow`) |
+| `WHATSAPP_FLOW_START_SCREEN` | No | Optional WhatsApp Flow start screen ID |
 | `ADMIN_TOKEN` | No (but **recommended**) | Secret token for admin API protection |
 | `PRIVATE_KEY` | **Yes** (production) / No (local) | RSA private key for Flow decryption |
 

@@ -150,43 +150,48 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
   if (!flowId) throw new Error('sendWhatsAppFlowMessage: flowId is required');
   if (!flowToken) throw new Error('sendWhatsAppFlowMessage: flowToken is required');
 
-  const headerImageUrl = String(config.WHATSAPP_TEMPLATE_HEADER_IMAGE_URL || 'https://www.zlc.co.zw/img/logo1.png').trim();
-  const bodyText = String(config.WHATSAPP_TEMPLATE_BODY_TEXT || 'Hello! 👋\n\nPlease tap the "View Flow" button below to begin your land verification process. Ensure you have your property details ready.').trim();
-  const footerText = String(config.WHATSAPP_TEMPLATE_FOOTER_TEXT || 'Thank you! Powered by NA').trim() || 'Thank you! Powered by NA';
+  const headerImageUrl = String(config.WHATSAPP_FLOW_HEADER_IMAGE_URL || '').trim();
+  const bodyText = String(config.WHATSAPP_FLOW_BODY_TEXT || 'Hello! 👋\n\nPlease tap the "View Flow" button below to begin your land verification process. Ensure you have your property details ready.').trim();
+  const footerText = String(config.WHATSAPP_FLOW_FOOTER_TEXT || 'Thank you! Powered by NA').trim() || 'Thank you! Powered by NA';
   const flowCta = String(config.WHATSAPP_FLOW_ACTION_CTA || 'View Flow').trim() || 'View Flow';
   const flowStartScreen = String(config.WHATSAPP_FLOW_START_SCREEN || '').trim();
+
+  const interactive = {
+    type: 'flow',
+    body: {
+      text: bodyText,
+    },
+    footer: {
+      text: footerText,
+    },
+    action: {
+      name: 'flow',
+      parameters: {
+        flow_message_version: '3',
+        flow_token: flowToken,
+        flow_id: flowId,
+        flow_cta: flowCta,
+        flow_action: 'navigate',
+        flow_action_payload: flowStartScreen ? { screen: flowStartScreen } : {},
+      },
+    },
+  };
+
+  if (headerImageUrl) {
+    interactive.header = {
+      type: 'image',
+      image: {
+        link: headerImageUrl,
+      },
+    };
+  }
 
   const payload = {
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
     to: toWaId,
     type: 'interactive',
-    interactive: {
-      type: 'flow',
-      header: {
-        type: 'image',
-        image: {
-          link: headerImageUrl,
-        },
-      },
-      body: {
-        text: bodyText,
-      },
-      footer: {
-        text: footerText,
-      },
-      action: {
-        name: 'flow',
-        parameters: {
-          flow_message_version: '3',
-          flow_token: flowToken,
-          flow_id: flowId,
-          flow_cta: flowCta,
-          flow_action: 'navigate',
-          flow_action_payload: flowStartScreen ? { screen: flowStartScreen } : {},
-        },
-      },
-    },
+    interactive,
   };
 
   const { res, body } = await postWhatsAppPayload(payload);

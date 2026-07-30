@@ -29,6 +29,12 @@ const config = {
   WHATSAPP_TEMPLATE_BODY_TEXT: process.env.WHATSAPP_TEMPLATE_BODY_TEXT || 'Applicant',
   WHATSAPP_TEMPLATE_FOOTER_TEXT: process.env.WHATSAPP_TEMPLATE_FOOTER_TEXT || '',
 
+  WHATSAPP_FLOW_HEADER_IMAGE_URL: process.env.WHATSAPP_FLOW_HEADER_IMAGE_URL || '',
+  WHATSAPP_FLOW_BODY_TEXT: process.env.WHATSAPP_FLOW_BODY_TEXT || 'Hello! 👋\n\nPlease tap the "View Flow" button below to begin your land verification process. Ensure you have your property details ready.',
+  WHATSAPP_FLOW_FOOTER_TEXT: process.env.WHATSAPP_FLOW_FOOTER_TEXT || 'Thank you! Powered by NA',
+  WHATSAPP_FLOW_ACTION_CTA: process.env.WHATSAPP_FLOW_ACTION_CTA || 'View Flow',
+  WHATSAPP_FLOW_START_SCREEN: process.env.WHATSAPP_FLOW_START_SCREEN || '',
+
   // WhatsApp Flows - the Flow ID from WhatsApp Manager
   WHATSAPP_FLOW_ID: process.env.WHATSAPP_FLOW_ID || '1030716066135048',
 };
