@@ -265,6 +265,19 @@ function extractTextMessage(payload) {
   };
 }
 
+function hasFlowSubmission(payload) {
+  const entry = payload?.entry?.[0];
+  const change = entry?.changes?.[0];
+  const value = change?.value;
+  const message = value?.messages?.[0];
+  const submission = message?.interactive?.flow?.submission;
+  if (!submission) return false;
+  const data = submission.data || submission.fields || submission.field_data || submission;
+  if (!data) return false;
+  if (Array.isArray(data)) return data.length > 0;
+  return Object.keys(data).length > 0;
+}
+
 webhookRouter.post(['/', '/whatsapp'], async (req, res) => {
   try {
     // Always respond with 200 to Meta to acknowledge receipt
@@ -294,7 +307,12 @@ webhookRouter.post(['/', '/whatsapp'], async (req, res) => {
           return;
         }
 
-        // Otherwise, process as a flow submission
+        // If the webhook payload does not contain a real flow submission, ignore it
+        if (!hasFlowSubmission(req.body)) {
+          console.log('[Webhook] Non-submission flow event received; ignoring');
+          return;
+        }
+
         const extracted = extractSubmissionFromMeta(req.body || {});
         console.log('[Webhook] Flow submission received:', {
           wa_id: extracted.wa_id,
