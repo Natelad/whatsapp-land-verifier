@@ -202,7 +202,9 @@ async function sendWhatsAppFlowMessage({ toWaId, flowId, flowToken }) {
     throw new Error(msg);
   }
 
-  console.log('[WhatsApp Flow] Template message sent successfully to', toWaId, 'language:', languageCode, 'payload:', JSON.stringify(payload));
+  console.log('[WhatsApp Flow] Template message sent successfully to', toWaId, 'language:', languageCode);
+  console.log('[WhatsApp Flow] WhatsApp API response:', JSON.stringify(body, null, 2));
+  console.log('[WhatsApp Flow] Request payload sent:', JSON.stringify(payload, null, 2));
   return body;
 }
 
