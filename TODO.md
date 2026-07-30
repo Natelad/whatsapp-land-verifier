@@ -1,16 +1,9 @@
-# TODO: Instant Notifications & Input Formatting
+# Fix: WhatsApp Flow nfm_reply Submission Handling
 
 ## Steps
+- [x] Analyze the issue - `hasFlowSubmission()` doesn't detect `nfm_reply` type submissions
 - [x] Plan approved by user
-- [x] 1. Add input format validation in `server/src/routes/whatsapp-flow.js`
-  - [x] Validate national_id format (Zimbabwe format: XX-XXXXXXX-X-XX)
-  - [x] Validate plot_number is not empty
-  - [x] Validate phone number format
-  - [x] Return validation errors to flow screen
-- [x] 2. Send instant WhatsApp notification after successful submission
-  - [x] Import sendWhatsAppMessage in whatsapp-flow.js
-  - [x] Send "Application submitted and pending review" message
-- [x] 3. Update SUCCESS screen data with clearer pending review message
-- [x] 4. Improve admin panel toast messages in SubmissionDetails.tsx
-  - [x] Updated verify toast to show pending review context
-  - [x] Updated reject toast to include the rejection reason
+- [x] **Step 1**: Added `hasNfmReply()` function to detect `nfm_reply` interactive messages
+- [x] **Step 2**: Updated `extractSubmissionFromMeta()` to parse `response_json` from `nfm_reply` payloads
+- [x] **Step 3**: Updated POST handler to check for both `nfm_reply` and `flow` submission types
+- [x] **Step 4**: Verified the changes are correct - file is clean with no syntax errors

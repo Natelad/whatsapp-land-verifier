@@ -35,6 +35,17 @@ function extractSubmissionFromMeta(payload) {
   const flow = message?.interactive?.flow;
   const flow_token = flow?.token;
 
+  // Check for nfm_reply (WhatsApp Flow submission from mobile)
+  const nfmReply = message?.interactive?.nfm_reply;
+  let nfmReplyData = null;
+  if (nfmReply && nfmReply.response_json && typeof nfmReply.response_json === 'string') {
+    try {
+      nfmReplyData = JSON.parse(nfmReply.response_json);
+    } catch (e) {
+      console.warn('[Webhook] Failed to parse nfm_reply response_json:', e.message);
+    }
+  }
+
   function normalizeFlowData(rawData) {
     if (!rawData) return {};
 
@@ -82,7 +93,8 @@ function extractSubmissionFromMeta(payload) {
     return {};
   }
 
-  let data = normalizeFlowData(flow?.submission?.data || flow?.submission || flow?.submission?.fields || flow?.submission?.field_data || {});
+  // Use nfm_reply data if available, otherwise fall back to flow submission
+  let data = nfmReplyData || normalizeFlowData(flow?.submission?.data || flow?.submission || flow?.submission?.fields || flow?.submission?.field_data || {});
   if (Array.isArray(data)) {
     data = normalizeFlowData(data);
   }
@@ -265,6 +277,28 @@ function extractTextMessage(payload) {
   };
 }
 
+function hasNfmReply(payload) {
+  const entry = payload?.entry?.[0];
+  const change = entry?.changes?.[0];
+  const value = change?.value;
+  const message = value?.messages?.[0];
+  if (!message) return false;
+  if (message.type !== 'interactive') return false;
+  const interactive = message.interactive;
+  if (!interactive) return false;
+  if (interactive.type !== 'nfm_reply') return false;
+  const nfmReply = interactive.nfm_reply;
+  if (!nfmReply) return false;
+  const responseJson = nfmReply.response_json;
+  if (!responseJson || typeof responseJson !== 'string') return false;
+  try {
+    const parsed = JSON.parse(responseJson);
+    return parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 function hasFlowSubmission(payload) {
   const entry = payload?.entry?.[0];
   const change = entry?.changes?.[0];
@@ -307,14 +341,17 @@ webhookRouter.post(['/', '/whatsapp'], async (req, res) => {
           return;
         }
 
-        // If the webhook payload does not contain a real flow submission, ignore it
-        if (!hasFlowSubmission(req.body)) {
+        // Check for nfm_reply (WhatsApp Flow submission from mobile) or flow submission
+        const isNfmReply = hasNfmReply(req.body);
+        const isFlowSubmission = hasFlowSubmission(req.body);
+
+        if (!isNfmReply && !isFlowSubmission) {
           console.log('[Webhook] Non-submission flow event received; ignoring');
           return;
         }
 
         const extracted = extractSubmissionFromMeta(req.body || {});
-        console.log('[Webhook] Flow submission received:', {
+        console.log(`[Webhook] ${isNfmReply ? 'nfm_reply' : 'flow'} submission received:`, {
           wa_id: extracted.wa_id,
           plot_number: extracted.plot_number,
           first_name: extracted.first_name,
