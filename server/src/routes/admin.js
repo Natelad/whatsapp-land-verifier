@@ -6,6 +6,15 @@ const { config } = require('../config/env');
 
 const adminRouter = express.Router();
 
+function sendServerError(res, err) {
+  console.error(err);
+  return res.status(500).json({ error: err.message || 'Server error' });
+}
+
+function csvEscape(value) {
+  return `"${String(value || '').replace(/"/g, '""')}"`;
+}
+
 // Simple shared secret protection (recommended to replace with real auth later)
 function requireAdminToken(req, res, next) {
   const token = req.headers['x-admin-token'] || req.query.token || '';
@@ -31,8 +40,7 @@ adminRouter.get('/stats', async (req, res) => {
     const stats = await getDashboardStats();
     return res.status(200).json({ ok: true, stats });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return sendServerError(res, err);
   }
 });
 
@@ -56,8 +64,7 @@ adminRouter.get('/submissions', async (req, res) => {
     const result = await listAllSubmissions(filters);
     return res.status(200).json({ ok: true, ...result });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return sendServerError(res, err);
   }
 });
 
@@ -80,24 +87,24 @@ adminRouter.get('/export', async (req, res) => {
     for (const item of items) {
       const row = [
         item.id,
-        `"${(item.plot_number || '').replace(/"/g, '""')}"`,
-        `"${(item.first_name || '').replace(/"/g, '""')}"`,
-        `"${(item.last_name || '').replace(/"/g, '""')}"`,
-        `"${(item.national_id || '').replace(/"/g, '""')}"`,
-        `"${(item.farm_name || '').replace(/"/g, '""')}"`,
-        `"${(item.gender || '').replace(/"/g, '""')}"`,
-        `"${(item.province || '').replace(/"/g, '""')}"`,
-        `"${(item.district || '').replace(/"/g, '""')}"`,
-        `"${(item.tenure_type || '').replace(/"/g, '""')}"`,
-        `"${(item.tenure_type_other || '').replace(/"/g, '""')}"`,
-        `"${(item.wa_id || '').replace(/"/g, '""')}"`,
-        `"${(item.from_phone || '').replace(/"/g, '""')}"`,
+        csvEscape(item.plot_number),
+        csvEscape(item.first_name),
+        csvEscape(item.last_name),
+        csvEscape(item.national_id),
+        csvEscape(item.farm_name),
+        csvEscape(item.gender),
+        csvEscape(item.province),
+        csvEscape(item.district),
+        csvEscape(item.tenure_type),
+        csvEscape(item.tenure_type_other),
+        csvEscape(item.wa_id),
+        csvEscape(item.from_phone),
         item.status,
-        `"${(item.verified_by || '').replace(/"/g, '""')}"`,
+        csvEscape(item.verified_by),
         item.verified_at || '',
-        `"${(item.rejected_by || '').replace(/"/g, '""')}"`,
+        csvEscape(item.rejected_by),
         item.rejected_at || '',
-        `"${(item.rejection_reason || '').replace(/"/g, '""')}"`,
+        csvEscape(item.rejection_reason),
         item.created_at,
         item.updated_at,
       ];
@@ -109,8 +116,7 @@ adminRouter.get('/export', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="land-submissions-export-${Date.now()}.csv"`);
     return res.status(200).send(csv);
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return sendServerError(res, err);
   }
 });
 
@@ -142,8 +148,7 @@ adminRouter.post('/submissions/:id/message', async (req, res) => {
 
     return res.status(200).json({ ok: true, message: 'Message sent successfully' });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return sendServerError(res, err);
   }
 });
 
@@ -154,82 +159,63 @@ adminRouter.get('/submissions/pending', async (req, res) => {
     const rows = await listPendingSubmissions(limit);
     return res.status(200).json({ ok: true, items: rows });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return sendServerError(res, err);
   }
 });
 
-adminRouter.post('/submissions/:id/verify', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const admin_name = req.body?.admin_name || 'Bank Admin';
-
-    const submission = await getSubmissionById(id);
-    if (!submission) return res.status(404).json({ error: 'Submission not found' });
-
-    if (submission.status !== 'Pending') {
-      return res.status(409).json({ error: `Cannot verify submission in status ${submission.status}` });
-    }
-
-    const updated = await setSubmissionStatus({
-      id,
-      status: 'Verified',
-      admin_name,
-    });
-
-    // Notify user
-    const toWaId = submission.wa_id;
-    const text = 'Thank you! Your details have been verified.';
-
-    // Best-effort: don't fail the whole request if WhatsApp send fails
+// Shared handler for verify/reject: validates the submission is Pending,
+// updates its status, and sends a best-effort WhatsApp notification.
+function submissionStatusHandler({ status, actionLabel, notifyText, withReason = false }) {
+  return async (req, res) => {
     try {
-      await sendWhatsAppMessage({ toWaId, text });
-    } catch (e) {
-      console.error('WhatsApp notify failed:', e.message || e);
+      const { id } = req.params;
+      const admin_name = req.body?.admin_name || 'Bank Admin';
+
+      const submission = await getSubmissionById(id);
+      if (!submission) return res.status(404).json({ error: 'Submission not found' });
+
+      if (submission.status !== 'Pending') {
+        return res.status(409).json({ error: `Cannot ${actionLabel} submission in status ${submission.status}` });
+      }
+
+      const updated = await setSubmissionStatus({
+        id,
+        status,
+        admin_name,
+        ...(withReason ? { rejection_reason: req.body?.rejection_reason || 'Not verified' } : {}),
+      });
+
+      // Best-effort: don't fail the whole request if WhatsApp send fails
+      try {
+        await sendWhatsAppMessage({ toWaId: submission.wa_id, text: notifyText });
+      } catch (e) {
+        console.error('WhatsApp notify failed:', e.message || e);
+      }
+
+      return res.status(200).json({ ok: true, submission: updated });
+    } catch (err) {
+      return sendServerError(res, err);
     }
+  };
+}
 
-    return res.status(200).json({ ok: true, submission: updated });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
-  }
-});
+adminRouter.post(
+  '/submissions/:id/verify',
+  submissionStatusHandler({
+    status: 'Verified',
+    actionLabel: 'verify',
+    notifyText: 'Thank you! Your details have been verified.',
+  })
+);
 
-adminRouter.post('/submissions/:id/reject', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const admin_name = req.body?.admin_name || 'Bank Admin';
-    const rejection_reason = req.body?.rejection_reason || 'Not verified';
-
-    const submission = await getSubmissionById(id);
-    if (!submission) return res.status(404).json({ error: 'Submission not found' });
-
-    if (submission.status !== 'Pending') {
-      return res.status(409).json({ error: `Cannot reject submission in status ${submission.status}` });
-    }
-
-    const updated = await setSubmissionStatus({
-      id,
-      status: 'Rejected',
-      admin_name,
-      rejection_reason,
-    });
-
-    // Notify user
-    const toWaId = submission.wa_id;
-    const text = 'Thank you for your submission. If the request is rejected, our team will contact you for verification.';
-
-    try {
-      await sendWhatsAppMessage({ toWaId, text });
-    } catch (e) {
-      console.error('WhatsApp notify failed:', e.message || e);
-    }
-
-    return res.status(200).json({ ok: true, submission: updated });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
-  }
-});
+adminRouter.post(
+  '/submissions/:id/reject',
+  submissionStatusHandler({
+    status: 'Rejected',
+    actionLabel: 'reject',
+    withReason: true,
+    notifyText: 'Thank you for your submission. If the request is rejected, our team will contact you for verification.',
+  })
+);
 
 module.exports = { adminRouter };

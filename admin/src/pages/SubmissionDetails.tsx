@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { api } from '../api'
 import { Submission, REJECTION_TEMPLATES } from '../types'
+import { getStatusKey } from '../utils/status'
 
 export default function SubmissionDetails({
   submission,
@@ -26,13 +27,7 @@ export default function SubmissionDetails({
     }
   }, [submission.created_at])
 
-  const statusClass = useMemo(() => {
-    switch (submission.status?.toLowerCase()) {
-      case 'verified': return 'verified'
-      case 'rejected': return 'rejected'
-      default: return 'pending'
-    }
-  }, [submission.status])
+  const statusClass = useMemo(() => getStatusKey(submission.status), [submission.status])
 
   function showToast(type: 'success' | 'error', message: string) {
     setToast({ type, message })
