@@ -58,8 +58,9 @@ export default function AllSubmissions() {
   }
 
   function handleExport() {
-    const url = api.getExportUrl(filters)
-    window.open(url, '_blank')
+    api.downloadExport(filters).catch((err) => {
+      console.error('Export failed:', err)
+    })
   }
 
   async function onActionDone() {

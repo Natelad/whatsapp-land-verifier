@@ -3,17 +3,18 @@ const { listPendingSubmissions, listAllSubmissions, getSubmissionById, getDashbo
 const { sendWhatsAppMessage } = require('../services/whatsapp');
 
 const { config } = require('../config/env');
+const { safeEqual } = require('../utils/security');
 
 const adminRouter = express.Router();
 
 // Simple shared secret protection (recommended to replace with real auth later)
 function requireAdminToken(req, res, next) {
-  const token = req.headers['x-admin-token'] || req.query.token || '';
   if (!config.ADMIN_TOKEN) {
-    // If not set, allow (dev convenience). In production, set ADMIN_TOKEN.
-    return next();
+    // Fail closed: never expose admin endpoints without a configured token.
+    return res.status(503).json({ error: 'Admin API unavailable: ADMIN_TOKEN is not configured' });
   }
-  if (token !== config.ADMIN_TOKEN) {
+  const token = req.headers['x-admin-token'] || '';
+  if (!safeEqual(token, config.ADMIN_TOKEN)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   return next();
@@ -32,7 +33,7 @@ adminRouter.get('/stats', async (req, res) => {
     return res.status(200).json({ ok: true, stats });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -57,9 +58,17 @@ adminRouter.get('/submissions', async (req, res) => {
     return res.status(200).json({ ok: true, ...result });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
+
+// Quote a CSV field and neutralize spreadsheet formula injection
+// (values starting with =, +, -, @, tab, or CR are prefixed with a quote).
+function csvField(value) {
+  const str = String(value ?? '');
+  const escaped = /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+  return `"${escaped.replace(/"/g, '""')}"`;
+}
 
 // Export submissions as CSV
 adminRouter.get('/export', async (req, res) => {
@@ -80,24 +89,24 @@ adminRouter.get('/export', async (req, res) => {
     for (const item of items) {
       const row = [
         item.id,
-        `"${(item.plot_number || '').replace(/"/g, '""')}"`,
-        `"${(item.first_name || '').replace(/"/g, '""')}"`,
-        `"${(item.last_name || '').replace(/"/g, '""')}"`,
-        `"${(item.national_id || '').replace(/"/g, '""')}"`,
-        `"${(item.farm_name || '').replace(/"/g, '""')}"`,
-        `"${(item.gender || '').replace(/"/g, '""')}"`,
-        `"${(item.province || '').replace(/"/g, '""')}"`,
-        `"${(item.district || '').replace(/"/g, '""')}"`,
-        `"${(item.tenure_type || '').replace(/"/g, '""')}"`,
-        `"${(item.tenure_type_other || '').replace(/"/g, '""')}"`,
-        `"${(item.wa_id || '').replace(/"/g, '""')}"`,
-        `"${(item.from_phone || '').replace(/"/g, '""')}"`,
+        csvField(item.plot_number || ''),
+        csvField(item.first_name || ''),
+        csvField(item.last_name || ''),
+        csvField(item.national_id || ''),
+        csvField(item.farm_name || ''),
+        csvField(item.gender || ''),
+        csvField(item.province || ''),
+        csvField(item.district || ''),
+        csvField(item.tenure_type || ''),
+        csvField(item.tenure_type_other || ''),
+        csvField(item.wa_id || ''),
+        csvField(item.from_phone || ''),
         item.status,
-        `"${(item.verified_by || '').replace(/"/g, '""')}"`,
+        csvField(item.verified_by || ''),
         item.verified_at || '',
-        `"${(item.rejected_by || '').replace(/"/g, '""')}"`,
+        csvField(item.rejected_by || ''),
         item.rejected_at || '',
-        `"${(item.rejection_reason || '').replace(/"/g, '""')}"`,
+        csvField(item.rejection_reason || ''),
         item.created_at,
         item.updated_at,
       ];
@@ -110,7 +119,7 @@ adminRouter.get('/export', async (req, res) => {
     return res.status(200).send(csv);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -143,7 +152,7 @@ adminRouter.post('/submissions/:id/message', async (req, res) => {
     return res.status(200).json({ ok: true, message: 'Message sent successfully' });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -155,7 +164,7 @@ adminRouter.get('/submissions/pending', async (req, res) => {
     return res.status(200).json({ ok: true, items: rows });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -191,7 +200,7 @@ adminRouter.post('/submissions/:id/verify', async (req, res) => {
     return res.status(200).json({ ok: true, submission: updated });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -228,7 +237,7 @@ adminRouter.post('/submissions/:id/reject', async (req, res) => {
     return res.status(200).json({ ok: true, submission: updated });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 

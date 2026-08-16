@@ -75,8 +75,16 @@ app.get('/healthz', (req, res) => {
 app.use('/whatsapp-flow', require('./routes/whatsapp-flow').whatsappFlowRouter)
 
 if (webhookRouter) {
-  // Meta webhook payloads are JSON (webhook endpoint only)
-  app.use(express.json({ limit: '2mb' }));
+  // Meta webhook payloads are JSON (webhook endpoint only).
+  // Keep the raw body so the webhook route can validate X-Hub-Signature-256.
+  app.use(
+    express.json({
+      limit: '2mb',
+      verify: (req, res, buf) => {
+        req.rawBody = buf
+      },
+    })
+  );
   // WhatsApp/Meta webhook endpoint(s)
   app.use('/webhook', webhookRouter)
 }
