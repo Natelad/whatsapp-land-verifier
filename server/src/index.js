@@ -18,7 +18,8 @@ try {
 } catch (err) {
   // eslint-disable-next-line no-console
   console.warn(
-    'landbot-server starting in limited mode (missing env vars). /healthz will work; /webhook and /admin will not be mounted.'
+    'landbot-server starting in limited mode (missing env vars). /healthz will work; /webhook and /admin will not be mounted.',
+    err.message || err
   )
 }
 const app = express()

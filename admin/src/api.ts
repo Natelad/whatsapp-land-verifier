@@ -14,6 +14,13 @@ const API_BASE = (() => {
   return v
 })()
 
+export interface ModerationResult {
+  ok: boolean
+  submission: Submission
+  whatsapp_notified?: boolean
+  whatsapp_error?: string | null
+}
+
 function getAdminToken() {
   if (typeof window === 'undefined') return ''
   return sessionStorage.getItem('admin_token') || ''
@@ -68,26 +75,24 @@ export const api = {
     return data.stats
   },
 
-  async verifySubmission(id: string, admin_name?: string): Promise<Submission> {
-    const data = await request<{ ok: boolean; submission: Submission }>(
+  async verifySubmission(id: string, admin_name?: string): Promise<ModerationResult> {
+    return request<ModerationResult>(
       `/admin/submissions/${id}/verify`,
       {
         method: 'POST',
         body: JSON.stringify({ admin_name }),
       }
     )
-    return data.submission
   },
 
-  async rejectSubmission(id: string, rejection_reason: string, admin_name?: string): Promise<Submission> {
-    const data = await request<{ ok: boolean; submission: Submission }>(
+  async rejectSubmission(id: string, rejection_reason: string, admin_name?: string): Promise<ModerationResult> {
+    return request<ModerationResult>(
       `/admin/submissions/${id}/reject`,
       {
         method: 'POST',
         body: JSON.stringify({ rejection_reason, admin_name }),
       }
     )
-    return data.submission
   },
 
   async sendMessage(id: string, message: string): Promise<void> {

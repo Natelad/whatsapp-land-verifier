@@ -55,7 +55,8 @@ function parseRequestBody(rawBody) {
     if (!asText) return {};
     try {
       return JSON.parse(asText);
-    } catch {
+    } catch (err) {
+      console.warn('[/whatsapp-flow] Failed to parse request body as JSON:', err.message);
       return {};
     }
   }
@@ -69,7 +70,8 @@ function parseRequestBody(rawBody) {
     if (!asText) return {};
     try {
       return JSON.parse(asText);
-    } catch {
+    } catch (err) {
+      console.warn('[/whatsapp-flow] Failed to parse request body as JSON:', err.message);
       return {};
     }
   }
@@ -326,6 +328,11 @@ async function handleEncryptedFlowPayload(body) {
         if (submissionData.plot_number && (submissionData.first_name || submissionData.last_name)) {
           const row = await upsertLandSubmission(submissionData);
           console.log('[/whatsapp-flow] Submission saved from flow:', row?.id);
+          responseScreen = 'SUCCESS';
+          responseDataObj = {
+            status: 'success',
+            message: 'Thank you for the verification. We’ll let you know once the process is complete.',
+          };
           if (userWaId) {
             try {
               await sendWhatsAppMessage({
@@ -354,18 +361,19 @@ async function handleEncryptedFlowPayload(body) {
         }
       }
     } catch (saveErr) {
-      console.error('[/whatsapp-flow] Error saving submission:', saveErr.message);
+      console.error('[/whatsapp-flow] Error saving submission:', saveErr);
+      responseScreen = screen;
+      responseDataObj = {
+        status: 'error',
+        message: 'We could not save your submission. Please try again shortly.',
+      };
     }
-  }
-
-  if (action === 'data_exchange') {
-    responseScreen = 'SUCCESS';
+  } else if (action === 'data_exchange') {
+    console.warn('[/whatsapp-flow] data_exchange received without form data');
     responseDataObj = {
-      status: 'success',
-      message: 'Thank you for the verification. We’ll let you know once the process is complete.',
+      status: 'error',
+      message: 'No form data was received. Please fill in the form and try again.',
     };
-  } else if (action === 'ping' || action === 'init') {
-    responseDataObj = { status: 'active' };
   } else {
     responseDataObj = { status: 'active' };
   }
