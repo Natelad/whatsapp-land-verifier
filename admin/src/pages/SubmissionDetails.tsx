@@ -52,8 +52,12 @@ export default function SubmissionDetails({
     setError(null)
     setVerifying(true)
     try {
-      await api.verifySubmission(submission.id, 'Bank Admin')
-      showToast('success', `✅ Plot ${submission.plot_number} verified successfully! The applicant has been notified via WhatsApp.`)
+      const result = await api.verifySubmission(submission.id, 'Bank Admin')
+      if (result.whatsapp_notified === false) {
+        showToast('error', `Plot ${submission.plot_number} verified, but the WhatsApp notification failed: ${result.whatsapp_error || 'unknown error'}`)
+      } else {
+        showToast('success', `✅ Plot ${submission.plot_number} verified successfully! The applicant has been notified via WhatsApp.`)
+      }
       onActionDone()
     } catch (e: any) {
       const msg = e?.message || 'Failed to verify'
@@ -69,8 +73,12 @@ export default function SubmissionDetails({
     setRejecting(true)
     try {
       const reason = rejectReason.trim() || (selectedTemplate !== 'custom' ? selectedTemplate : 'Not verified')
-      await api.rejectSubmission(submission.id, reason, 'Bank Admin')
-      showToast('success', `❌ Plot ${submission.plot_number} has been rejected. The applicant has been notified via WhatsApp.`)
+      const result = await api.rejectSubmission(submission.id, reason, 'Bank Admin')
+      if (result.whatsapp_notified === false) {
+        showToast('error', `Plot ${submission.plot_number} rejected, but the WhatsApp notification failed: ${result.whatsapp_error || 'unknown error'}`)
+      } else {
+        showToast('success', `❌ Plot ${submission.plot_number} has been rejected. The applicant has been notified via WhatsApp.`)
+      }
       onActionDone()
     } catch (e: any) {
       const msg = e?.message || 'Failed to reject'

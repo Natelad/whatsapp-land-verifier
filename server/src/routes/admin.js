@@ -181,14 +181,19 @@ adminRouter.post('/submissions/:id/verify', async (req, res) => {
     const toWaId = submission.wa_id;
     const text = 'Thank you! Your details have been verified.';
 
-    // Best-effort: don't fail the whole request if WhatsApp send fails
+    // Best-effort: don't fail the whole request if WhatsApp send fails,
+    // but report the failure to the client so it isn't silently swallowed.
+    let whatsappNotified = true;
+    let whatsappError = null;
     try {
       await sendWhatsAppMessage({ toWaId, text });
     } catch (e) {
-      console.error('WhatsApp notify failed:', e.message || e);
+      console.error('WhatsApp notify failed:', e);
+      whatsappNotified = false;
+      whatsappError = e.message || String(e);
     }
 
-    return res.status(200).json({ ok: true, submission: updated });
+    return res.status(200).json({ ok: true, submission: updated, whatsapp_notified: whatsappNotified, whatsapp_error: whatsappError });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message || 'Server error' });
@@ -219,13 +224,17 @@ adminRouter.post('/submissions/:id/reject', async (req, res) => {
     const toWaId = submission.wa_id;
     const text = 'Thank you for your submission. If the request is rejected, our team will contact you for verification.';
 
+    let whatsappNotified = true;
+    let whatsappError = null;
     try {
       await sendWhatsAppMessage({ toWaId, text });
     } catch (e) {
-      console.error('WhatsApp notify failed:', e.message || e);
+      console.error('WhatsApp notify failed:', e);
+      whatsappNotified = false;
+      whatsappError = e.message || String(e);
     }
 
-    return res.status(200).json({ ok: true, submission: updated });
+    return res.status(200).json({ ok: true, submission: updated, whatsapp_notified: whatsappNotified, whatsapp_error: whatsappError });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message || 'Server error' });

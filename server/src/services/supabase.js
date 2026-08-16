@@ -92,7 +92,7 @@ async function getSubmissionById(id) {
     .from('land_submissions')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
