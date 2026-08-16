@@ -97,15 +97,31 @@ export const api = {
     })
   },
 
-  getExportUrl(filters: Partial<SubmissionFilters>): string {
+  async downloadExport(filters: Partial<SubmissionFilters>): Promise<void> {
     const params = new URLSearchParams()
     if (filters.status && filters.status !== 'all') params.set('status', filters.status)
     if (filters.search) params.set('search', filters.search)
     if (filters.date_from) params.set('date_from', filters.date_from)
     if (filters.date_to) params.set('date_to', filters.date_to)
-    const adminToken = getAdminToken()
-    if (adminToken) params.set('token', adminToken)
     const qs = params.toString()
-    return `${API_BASE}/admin/export${qs ? `?${qs}` : ''}`
+    const url = `${API_BASE}/admin/export${qs ? `?${qs}` : ''}`
+
+    const adminToken = getAdminToken()
+    const res = await fetch(url, {
+      headers: adminToken ? { 'x-admin-token': adminToken } : undefined,
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as { error?: string }))
+      throw new Error(body?.error || `Export failed with status ${res.status}`)
+    }
+    const blob = await res.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = `land-submissions-export-${Date.now()}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(objectUrl)
   },
 }

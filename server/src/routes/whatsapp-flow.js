@@ -5,6 +5,7 @@ const path = require('path');
 
 const { sendWhatsAppMessage } = require('../services/whatsapp');
 const { normalizeTenureType } = require('../utils/tenureType');
+const { verifyMetaSignature } = require('../utils/security');
 
 const whatsappFlowRouter = express.Router();
 
@@ -179,8 +180,6 @@ async function handleEncryptedFlowPayload(body) {
   const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   const decryptedText = decrypted.toString('utf8');
 
-  console.log('[/whatsapp-flow] Decrypted flow data:', decryptedText);
-
   let decryptedObject = null;
   try {
     decryptedObject = JSON.parse(decryptedText);
@@ -195,10 +194,6 @@ async function handleEncryptedFlowPayload(body) {
   const action = decryptedObject?.action;
   const screen = decryptedObject?.screen || 'GREETING';
   const flowToken = decryptedObject?.flow_token;
-
-  if (decryptedObject?.data) {
-    console.log('[/whatsapp-flow] Submitted form data:', JSON.stringify(decryptedObject.data, null, 2));
-  }
 
   let responseScreen = screen;
   let responseDataObj = {};
@@ -375,7 +370,6 @@ async function handleEncryptedFlowPayload(body) {
     data: responseDataObj,
   };
   const responseJson = JSON.stringify(responseData);
-  console.log('[/whatsapp-flow] Response JSON to encrypt:', responseJson);
 
   const flippedIv = Buffer.alloc(iv.length);
   for (let i = 0; i < iv.length; i++) {
@@ -445,6 +439,13 @@ function looksLikePing(body) {
 }
 
 whatsappFlowRouter.post('/', async (req, res) => {
+  // Validate the payload came from Meta (enforced when META_APP_SECRET is set)
+  const rawBody = Buffer.isBuffer(req.body) ? req.body : null;
+  if (!verifyMetaSignature(req, rawBody)) {
+    console.warn('[/whatsapp-flow] Invalid or missing X-Hub-Signature-256; rejecting request');
+    return res.status(432).send('Invalid signature');
+  }
+
   const body = parseRequestBody(req.body);
   const encryptedFlowDataB64 = body.encrypted_flow_data;
   const encryptedAesKeyB64 = body.encrypted_aes_key;
@@ -456,13 +457,10 @@ whatsappFlowRouter.post('/', async (req, res) => {
       return res.status(200).json({ data: { status: 'active' } });
     }
 
-    console.log('[/whatsapp-flow] non-encrypted POST received. Parsed body:', body);
-    console.log('[/whatsapp-flow] keys:', Object.keys(body));
+    console.log('[/whatsapp-flow] non-encrypted POST received. keys:', Object.keys(body));
 
     return res.status(501).json({
-      error: 'Ping endpoint works, but flow processing/decryption is not implemented for this payload shape.',
-      receivedAction: body.action || body.type || body.event || body?.request?.action || body?.data?.action || null,
-      receivedKeys: Object.keys(body),
+      error: 'Unsupported payload shape.',
     });
   }
 
@@ -474,8 +472,7 @@ whatsappFlowRouter.post('/', async (req, res) => {
     console.log('[/whatsapp-flow] ERROR:', err.message);
     console.log('[/whatsapp-flow] Stack:', err.stack);
     return res.status(500).json({
-      error: 'Failed to decrypt encrypted_flow_data with private.pem',
-      message: err?.message || String(err),
+      error: 'Failed to process encrypted flow payload',
     });
   }
 });

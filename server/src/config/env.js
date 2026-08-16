@@ -10,9 +10,18 @@ const config = {
   SUPABASE_URL: required('SUPABASE_URL'),
   SUPABASE_SERVICE_ROLE_KEY: required('SUPABASE_SERVICE_ROLE_KEY'),
 
-  // Admin access secret. If not set, /admin is open (dev convenience).
-  // For production, set ADMIN_TOKEN in Render env vars.
+  // Admin access secret. Required to use /admin endpoints; if not set,
+  // the admin API responds 503 (fail closed).
   ADMIN_TOKEN: process.env.ADMIN_TOKEN,
+
+  // Meta App Secret, used to validate X-Hub-Signature-256 on incoming
+  // webhook requests. When set, requests with a missing/invalid signature
+  // are rejected.
+  META_APP_SECRET: process.env.META_APP_SECRET,
+
+  // Webhook verification token for the GET handshake. Should be a random
+  // value distinct from the WhatsApp access token.
+  WHATSAPP_VERIFY_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN,
 
   // Meta WhatsApp Cloud API
   // Example: https://graph.facebook.com/v20.0/{WABA_PHONE_NUMBER_ID}/messages

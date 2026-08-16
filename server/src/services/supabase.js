@@ -110,6 +110,30 @@ async function listPendingSubmissions(limit = 50) {
   return data || [];
 }
 
+// Strip characters that have special meaning in PostgREST filter strings
+// (commas, parentheses, dots, quotes) and in LIKE patterns, so user input
+// cannot inject additional filter clauses.
+function sanitizeSearchTerm(search) {
+  return String(search || '')
+    .trim()
+    .replace(/[,()."'\\%_*]/g, '')
+    .slice(0, 100);
+}
+
+const SORTABLE_COLUMNS = new Set([
+  'created_at',
+  'updated_at',
+  'plot_number',
+  'first_name',
+  'last_name',
+  'national_id',
+  'status',
+  'province',
+  'district',
+  'verified_at',
+  'rejected_at',
+]);
+
 async function listAllSubmissions({ status, search, date_from, date_to, sort_by, sort_order, page, limit } = {}) {
   let query = supabase.from('land_submissions').select('*', { count: 'exact' });
 
@@ -119,8 +143,9 @@ async function listAllSubmissions({ status, search, date_from, date_to, sort_by,
   }
 
   // Search across multiple fields
-  if (search && search.trim()) {
-    const term = `%${search.trim()}%`;
+  const sanitizedSearch = sanitizeSearchTerm(search);
+  if (sanitizedSearch) {
+    const term = `%${sanitizedSearch}%`;
     query = query.or(
       `plot_number.ilike.${term},first_name.ilike.${term},last_name.ilike.${term},national_id.ilike.${term},wa_id.ilike.${term},farm_name.ilike.${term},province.ilike.${term},district.ilike.${term},tenure_type.ilike.${term},tenure_type_other.ilike.${term},from_phone.ilike.${term}`
     );
@@ -134,8 +159,8 @@ async function listAllSubmissions({ status, search, date_from, date_to, sort_by,
     query = query.lte('created_at', date_to);
   }
 
-  // Sorting
-  const sortField = sort_by || 'created_at';
+  // Sorting (whitelisted columns only)
+  const sortField = SORTABLE_COLUMNS.has(sort_by) ? sort_by : 'created_at';
   const sortDir = sort_order === 'asc' ? { ascending: true } : { ascending: false };
   query = query.order(sortField, sortDir);
 
@@ -200,8 +225,9 @@ async function getSubmissionsExport({ status, search, date_from, date_to } = {})
     query = query.eq('status', status);
   }
 
-  if (search && search.trim()) {
-    const term = `%${search.trim()}%`;
+  const sanitizedSearch = sanitizeSearchTerm(search);
+  if (sanitizedSearch) {
+    const term = `%${sanitizedSearch}%`;
     query = query.or(
       `plot_number.ilike.${term},first_name.ilike.${term},last_name.ilike.${term},national_id.ilike.${term},wa_id.ilike.${term}`
     );

@@ -4,6 +4,7 @@ const { upsertLandSubmission } = require('../services/supabase');
 const { sendWhatsAppFlowMessage } = require('../services/whatsapp');
 const { config } = require('../config/env');
 const { normalizeTenureType } = require('../utils/tenureType');
+const { safeEqual, verifyMetaSignature } = require('../utils/security');
 
 const webhookRouter = express.Router();
 
@@ -245,7 +246,8 @@ webhookRouter.get(['/', '/whatsapp'], (req, res) => {
     // Require env at runtime; server won't mount routes if env is invalid.
     // eslint-disable-next-line global-require
     const { config } = require('../config/env');
-    if (mode === 'subscribe' && verifyToken === config.WHATSAPP_TOKEN) {
+    const expectedToken = config.WHATSAPP_VERIFY_TOKEN || config.WHATSAPP_TOKEN;
+    if (mode === 'subscribe' && safeEqual(verifyToken, expectedToken)) {
       return res.status(200).send(String(challenge || ''));
     }
     return res.status(403).send('Verification failed');
@@ -318,6 +320,12 @@ function hasFlowSubmission(payload) {
 
 webhookRouter.post(['/', '/whatsapp'], async (req, res) => {
   try {
+    // Validate the payload came from Meta (enforced when META_APP_SECRET is set)
+    if (!verifyMetaSignature(req, req.rawBody)) {
+      console.warn('[Webhook] Invalid or missing X-Hub-Signature-256; rejecting request');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
     // Always respond with 200 to Meta to acknowledge receipt
     // (Meta will retry if we don't respond quickly)
     res.status(200).json({ ok: true });
