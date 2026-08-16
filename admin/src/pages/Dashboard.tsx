@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../api'
 import { DashboardStats } from '../types'
+import { CheckCircleIcon, ClockIcon, DocumentIcon, RefreshIcon, XCircleIcon } from '../components/icons'
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -50,11 +51,7 @@ export default function Dashboard() {
           <p className="page-subtitle">Overview of land verification activity</p>
         </div>
         <button className="refresh-btn" onClick={loadStats} disabled={loading}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 4 23 10 17 10" />
-            <polyline points="1 20 1 14 7 14" />
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-          </svg>
+          <RefreshIcon />
           {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
@@ -62,13 +59,7 @@ export default function Dashboard() {
       <div className="stats-grid">
         <div className="stat-card stat-total">
           <div className="stat-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-              <polyline points="10 9 9 9 8 9" />
-            </svg>
+            <DocumentIcon size={24} detailed />
           </div>
           <div className="stat-info">
             <div className="stat-value">{stats?.total ?? 0}</div>
@@ -78,10 +69,7 @@ export default function Dashboard() {
 
         <div className="stat-card stat-pending">
           <div className="stat-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
+            <ClockIcon size={24} />
           </div>
           <div className="stat-info">
             <div className="stat-value">{stats?.pending ?? 0}</div>
@@ -91,10 +79,7 @@ export default function Dashboard() {
 
         <div className="stat-card stat-verified">
           <div className="stat-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
+            <CheckCircleIcon size={24} />
           </div>
           <div className="stat-info">
             <div className="stat-value">{stats?.verified ?? 0}</div>
@@ -104,11 +89,7 @@ export default function Dashboard() {
 
         <div className="stat-card stat-rejected">
           <div className="stat-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </svg>
+            <XCircleIcon size={24} />
           </div>
           <div className="stat-info">
             <div className="stat-value">{stats?.rejected ?? 0}</div>

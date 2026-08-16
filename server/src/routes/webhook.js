@@ -3,7 +3,13 @@ const crypto = require('crypto');
 const { upsertLandSubmission } = require('../services/supabase');
 const { sendWhatsAppFlowMessage } = require('../services/whatsapp');
 const { config } = require('../config/env');
-const { normalizeTenureType } = require('../utils/tenureType');
+const {
+  getWebhookValue,
+  getWebhookMessage,
+  normalizeFlowData,
+  extractSubmissionFields,
+  extractContactWaId,
+} = require('../utils/flowData');
 
 const webhookRouter = express.Router();
 
@@ -18,12 +24,18 @@ const webhookRouter = express.Router();
  *
  * You will likely adjust the mapping once you see a real webhook payload from Meta.
  */
+function getContactPhone(message, value) {
+  return (
+    message?.contacts?.[0]?.wa_id ||
+    message?.contacts?.[0]?.phone?.number ||
+    value?.contacts?.[0]?.wa_id ||
+    value?.contacts?.[0]?.phone?.number ||
+    null
+  );
+}
+
 function extractSubmissionFromMeta(payload) {
-  // Common structure for WhatsApp Cloud:
-  // payload.entry[0].changes[0].value.messages[0]...
-  const entry = payload?.entry?.[0];
-  const change = entry?.changes?.[0];
-  const value = change?.value;
+  const value = getWebhookValue(payload);
 
   // Try message-based extraction
   const message = value?.messages?.[0];
@@ -46,183 +58,36 @@ function extractSubmissionFromMeta(payload) {
     }
   }
 
-  function normalizeFlowData(rawData) {
-    if (!rawData) return {};
-
-    if (Array.isArray(rawData)) {
-      return rawData.reduce((acc, item) => {
-        if (!item || typeof item !== 'object') return acc;
-
-        const key =
-          item.name ||
-          item.id ||
-          item.field ||
-          item.field_name ||
-          item.field_id ||
-          item?.metadata?.name ||
-          item?.payload?.name ||
-          item.type;
-
-        let value = item.value ?? item.text ?? item?.payload?.text ?? item?.payload?.value;
-        if (value && typeof value === 'object') {
-          value =
-            value.text ??
-            value.value ??
-            value.display_text ??
-            value.number ??
-            JSON.stringify(value);
-        }
-
-        if (key && value !== undefined) {
-          acc[key] = value;
-        }
-        return acc;
-      }, {});
-    }
-
-    if (typeof rawData === 'object') {
-      if (rawData.fields) {
-        return normalizeFlowData(rawData.fields);
-      }
-      if (rawData.field_data) {
-        return normalizeFlowData(rawData.field_data);
-      }
-      return rawData;
-    }
-
-    return {};
-  }
-
   // Use nfm_reply data if available, otherwise fall back to flow submission
-  let data = nfmReplyData || normalizeFlowData(flow?.submission?.data || flow?.submission || flow?.submission?.fields || flow?.submission?.field_data || {});
+  let data = nfmReplyData || normalizeFlowData(flow?.submission?.data || flow?.submission || {});
   if (Array.isArray(data)) {
     data = normalizeFlowData(data);
   }
 
-  const textPlot =
-    data?.plot_number ||
-    data?.plotNumber ||
-    data?.plot ||
-    data?.title_deed ||
-    data?.deed ||
-    data?.titleDeed ||
-    data?.fields?.plot_number;
-
-  const textFirstName =
-    data?.first_name ||
-    data?.firstName ||
-    data?.given_name ||
-    data?.givenName ||
-    data?.name_first ||
-    data?.fields?.first_name ||
-    data?.fields?.firstName ||
-    data?.fields?.given_name ||
-    data?.fields?.givenName;
-
-  const textLastName =
-    data?.last_name ||
-    data?.lastName ||
-    data?.family_name ||
-    data?.familyName ||
-    data?.name_last ||
-    data?.fields?.last_name ||
-    data?.fields?.lastName ||
-    data?.fields?.family_name ||
-    data?.fields?.familyName;
-
-  const textFarmName =
-    data?.farm_name ||
-    data?.farmName ||
-    data?.fields?.farm_name ||
-    data?.fields?.farmName;
-
-  const textGender =
-    data?.gender ||
-    data?.sex ||
-    data?.fields?.gender ||
-    data?.fields?.sex;
-
-  const textNationalId =
-    data?.national_id ||
-    data?.nationalId ||
-    data?.id_number ||
-    data?.fields?.national_id;
-
-  const textProvince =
-    data?.province ||
-    data?.province_name ||
-    data?.provinceName ||
-    data?.fields?.province ||
-    data?.fields?.province_name ||
-    data?.fields?.provinceName;
-
-  const textDistrict =
-    data?.district ||
-    data?.district_name ||
-    data?.districtName ||
-    data?.fields?.district ||
-    data?.fields?.district_name ||
-    data?.fields?.districtName;
-
-  const textTenureType = normalizeTenureType(
-    data?.tenure_type ||
-      data?.tenureType ||
-      data?.farm_particulars_tenure_type ||
-      data?.farmParticularsTenureType ||
-      data?.fields?.tenure_type ||
-      data?.fields?.tenureType ||
-      data?.fields?.farm_particulars_tenure_type ||
-      data?.fields?.farmParticularsTenureType
-  );
-
-  const textTenureTypeOther = normalizeTenureType(
-    data?.tenure_type_other ||
-      data?.tenureTypeOther ||
-      data?.other_tenure_type ||
-      data?.otherTenureType ||
-      data?.fields?.tenure_type_other ||
-      data?.fields?.tenureTypeOther ||
-      data?.fields?.other_tenure_type ||
-      data?.fields?.otherTenureType
-  );
+  const fields = extractSubmissionFields(data);
 
   // Meta may include contact/phone
   // Depending on webhook type, identifier may be in `message.from` (wa_id) or in contacts.
-  const from_phone =
-    message?.from ||
-    message?.contacts?.[0]?.wa_id ||
-    message?.contacts?.[0]?.phone?.number ||
-    value?.contacts?.[0]?.wa_id ||
-    value?.contacts?.[0]?.phone?.number ||
-    null;
+  const contactPhone = getContactPhone(message, value);
+  const from_phone = message?.from || contactPhone || null;
 
   // wa_id may also appear in contacts or in flow submission payload fields
-  const inferredWaId =
-    from ||
-    message?.contacts?.[0]?.wa_id ||
-    message?.contacts?.[0]?.phone?.number ||
-    value?.contacts?.[0]?.wa_id ||
-    value?.contacts?.[0]?.phone?.number ||
-    data?.wa_id ||
-    data?.phone ||
-    data?.phone_number ||
-    data?.tel ||
-    null;
+  const inferredWaId = from || contactPhone || extractContactWaId(data) || null;
 
   // wa_id is required for replying; we also store raw payload for later debugging
   return {
-    wa_id: inferredWaId || null,
+    wa_id: inferredWaId,
     from_phone,
-    first_name: textFirstName || null,
-    last_name: textLastName || null,
-    farm_name: textFarmName || null,
-    gender: textGender || null,
-    national_id: textNationalId || null,
-    plot_number: textPlot || null,
-    province: textProvince || null,
-    district: textDistrict || null,
-    tenure_type: textTenureType || null,
-    tenure_type_other: textTenureTypeOther || null,
+    first_name: fields.first_name,
+    last_name: fields.last_name,
+    farm_name: fields.farm_name,
+    gender: fields.gender,
+    national_id: fields.national_id,
+    plot_number: fields.plot_number,
+    province: fields.province,
+    district: fields.district,
+    tenure_type: fields.tenure_type,
+    tenure_type_other: fields.tenure_type_other,
     wa_message_id: wa_message_id || null,
     wa_flow_token: flow_token || null,
     raw_payload: payload || {},
@@ -242,9 +107,6 @@ webhookRouter.get(['/', '/whatsapp'], (req, res) => {
   const challenge = req.query['hub.challenge'];
 
   try {
-    // Require env at runtime; server won't mount routes if env is invalid.
-    // eslint-disable-next-line global-require
-    const { config } = require('../config/env');
     if (mode === 'subscribe' && verifyToken === config.WHATSAPP_TOKEN) {
       return res.status(200).send(String(challenge || ''));
     }
@@ -260,7 +122,7 @@ webhookRouter.get(['/', '/whatsapp'], (req, res) => {
  * Check if the incoming webhook payload is a text message (not a flow submission).
  */
 function isTextMessage(payload) {
-  const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  const message = getWebhookMessage(payload);
   if (!message) return false;
   // Text messages have type === 'text'
   return message.type === 'text' && message.text?.body;
@@ -270,10 +132,7 @@ function isTextMessage(payload) {
  * Extract the text body and sender wa_id from a text message payload.
  */
 function extractTextMessage(payload) {
-  const entry = payload?.entry?.[0];
-  const change = entry?.changes?.[0];
-  const value = change?.value;
-  const message = value?.messages?.[0];
+  const message = getWebhookMessage(payload);
   return {
     wa_id: message?.from || null,
     text: message?.text?.body || null,
@@ -282,10 +141,7 @@ function extractTextMessage(payload) {
 }
 
 function hasNfmReply(payload) {
-  const entry = payload?.entry?.[0];
-  const change = entry?.changes?.[0];
-  const value = change?.value;
-  const message = value?.messages?.[0];
+  const message = getWebhookMessage(payload);
   if (!message) return false;
   if (message.type !== 'interactive') return false;
   const interactive = message.interactive;
@@ -304,10 +160,7 @@ function hasNfmReply(payload) {
 }
 
 function hasFlowSubmission(payload) {
-  const entry = payload?.entry?.[0];
-  const change = entry?.changes?.[0];
-  const value = change?.value;
-  const message = value?.messages?.[0];
+  const message = getWebhookMessage(payload);
   const submission = message?.interactive?.flow?.submission;
   if (!submission) return false;
   const data = submission.data || submission.fields || submission.field_data || submission;

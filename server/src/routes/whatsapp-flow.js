@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { sendWhatsAppMessage } = require('../services/whatsapp');
-const { normalizeTenureType } = require('../utils/tenureType');
+const { normalizeFlowData, extractSubmissionFields, extractContactWaId } = require('../utils/flowData');
 
 const whatsappFlowRouter = express.Router();
 
@@ -81,59 +81,6 @@ function parseRequestBody(rawBody) {
   return {};
 }
 
-function normalizeFlowFieldName(fieldName) {
-  if (fieldName === undefined || fieldName === null) return '';
-  return String(fieldName)
-    .trim()
-    .toLowerCase()
-    .replace(/[\s\-()]+/g, '_')
-    .replace(/[^a-z0-9_]/g, '');
-}
-
-function normalizeFlowData(rawData) {
-  if (!rawData || typeof rawData !== 'object') return {};
-
-  if (Array.isArray(rawData)) {
-    return rawData.reduce((acc, item) => {
-      if (!item || typeof item !== 'object') return acc;
-
-      const key =
-        item.name ||
-        item.id ||
-        item.field ||
-        item.field_name ||
-        item.field_id ||
-        item.label ||
-        item.label_name ||
-        item?.metadata?.name ||
-        item?.payload?.name;
-
-      let value = item.value ?? item.text ?? item?.payload?.text ?? item?.payload?.value;
-      if (value && typeof value === 'object') {
-        value = value.text ?? value.value ?? value.display_text ?? value.number ?? JSON.stringify(value);
-      }
-
-      if (key) {
-        acc[normalizeFlowFieldName(key)] = value;
-      }
-      return acc;
-    }, {});
-  }
-
-  if (rawData.fields) {
-    return normalizeFlowData(rawData.fields);
-  }
-
-  if (rawData.field_data) {
-    return normalizeFlowData(rawData.field_data);
-  }
-
-  return Object.entries(rawData).reduce((acc, [key, value]) => {
-    acc[normalizeFlowFieldName(key)] = value;
-    return acc;
-  }, {});
-}
-
 // Meta "ping" health check for WhatsApp Flows.
 // Render will be hit to confirm the backend is awake and properly configured.
 whatsappFlowRouter.get('/', (req, res) => {
@@ -206,7 +153,7 @@ async function handleEncryptedFlowPayload(body) {
   if (action === 'data_exchange' && decryptedObject?.data) {
     try {
       const { upsertLandSubmission } = require('../services/supabase');
-      const data = normalizeFlowData(decryptedObject.data);
+      const data = normalizeFlowData(decryptedObject.data, { normalizeKeys: true });
 
       let extractedWaId = null;
       if (flowToken && typeof flowToken === 'string') {
@@ -215,74 +162,18 @@ async function handleEncryptedFlowPayload(body) {
           extractedWaId = parts[1];
         }
       }
-      const userWaId = data.wa_id || data.phone || data.phone_number || data.tel || extractedWaId || null;
+      const userWaId = extractContactWaId(data) || extractedWaId || null;
 
-      const plotNumber = String(
-        data.plot_number ||
-        data.plotnumber ||
-        data.plot ||
-        data.plot_farm_number ||
-        data.plotfarmnumber ||
-        data.title_deed ||
-        data.deed ||
-        ''
-      ).trim();
-      const firstName =
-        data.first_name ||
-        data.firstname ||
-        data.given_name ||
-        data.givenname ||
-        data.name_first ||
-        data.namefirst ||
-        null;
-      const lastName =
-        data.last_name ||
-        data.lastname ||
-        data.family_name ||
-        data.familyname ||
-        data.name_last ||
-        data.namelast ||
-        null;
-      const fullName =
-        data.name ||
-        data.full_name ||
-        data.fullname ||
-        data.owner_name ||
-        data.ownername ||
-        data.contact_name ||
-        data.contactname ||
-        null;
-      const nationalId =
-        data.national_id ||
-        data.nationalid ||
-        data.id_number ||
-        data.identification_farm_id ||
-        data.identificationfarmid ||
-        data.identification ||
-        data.farm_id ||
-        null;
-      const province =
-        data.province ||
-        data.province_name ||
-        data.provincename ||
-        data.fields?.province ||
-        data.fields?.province_name ||
-        data.fields?.provinceName ||
-        null;
-      const district =
-        data.district ||
-        data.district_name ||
-        data.districtname ||
-        data.fields?.district ||
-        data.fields?.district_name ||
-        data.fields?.districtName ||
-        null;
-      const tenureType = normalizeTenureType(
-        data.tenure_type || data.tenureType || data.farm_particulars_tenure_type || data.farmParticularsTenureType || data.fields?.tenure_type || data.fields?.tenureType || data.fields?.farm_particulars_tenure_type || data.fields?.farmParticularsTenureType || null
-      );
-      const tenureTypeOther = normalizeTenureType(
-        data.tenure_type_other || data.tenureTypeOther || data.other_tenure_type || data.otherTenureType || data.fields?.tenure_type_other || data.fields?.tenureTypeOther || data.fields?.other_tenure_type || data.fields?.otherTenureType || null
-      );
+      const fields = extractSubmissionFields(data);
+      const plotNumber = String(fields.plot_number || '').trim();
+      const firstName = fields.first_name;
+      const lastName = fields.last_name;
+      const fullName = fields.full_name;
+      const nationalId = fields.national_id;
+      const province = fields.province;
+      const district = fields.district;
+      const tenureType = fields.tenure_type;
+      const tenureTypeOther = fields.tenure_type_other;
       const phoneNumber = userWaId;
 
       const validationErrors = [];
@@ -311,8 +202,8 @@ async function handleEncryptedFlowPayload(body) {
           plot_number: plotNumber,
           first_name: firstName || (fullName ? fullName.split(' ')[0] : null),
           last_name: lastName || (fullName ? fullName.split(' ').slice(1).join(' ') : null),
-          farm_name: data.farm_name || data.farmName || data.farmname || null,
-          gender: data.gender || data.sex || null,
+          farm_name: fields.farm_name,
+          gender: fields.gender,
           province,
           district,
           tenure_type: tenureType,

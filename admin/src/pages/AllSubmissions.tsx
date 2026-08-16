@@ -2,6 +2,9 @@ import React, { useEffect, useState, useRef } from 'react'
 import { api } from '../api'
 import { Submission } from '../types'
 import SubmissionDetails from './SubmissionDetails'
+import { getStatusClass, getStatusDotClass, getStatusLineClass } from '../utils/status'
+import { formatFullName, formatLocationLine, getInitials } from '../utils/format'
+import { CheckCircleIcon, ClockIcon, DocumentIcon, PinIcon, RefreshIcon, XCircleIcon, EyeIcon } from '../components/icons'
 
 export default function AllSubmissions() {
   const [items, setItems] = useState<Submission[]>([])
@@ -67,36 +70,6 @@ export default function AllSubmissions() {
     setSelected(null)
   }
 
-  function getStatusClass(status: string) {
-    switch (status?.toLowerCase()) {
-      case 'verified': return 'status-verified'
-      case 'rejected': return 'status-rejected'
-      default: return 'status-pending'
-    }
-  }
-
-  function getStatusDotClass(status: string) {
-    switch (status?.toLowerCase()) {
-      case 'verified': return 'dot-verified'
-      case 'rejected': return 'dot-rejected'
-      default: return 'dot-pending'
-    }
-  }
-
-  function getStatusLineClass(status: string) {
-    switch (status?.toLowerCase()) {
-      case 'verified': return 'status-verified-line'
-      case 'rejected': return 'status-rejected-line'
-      default: return 'status-pending-line'
-    }
-  }
-
-  function getInitials(first: string | null, last: string | null): string {
-    const f = first?.charAt(0) || ''
-    const l = last?.charAt(0) || ''
-    return (f + l) || '?'
-  }
-
   function hasActiveFilters(): boolean {
     return filters.status !== 'all' || filters.search !== '' || filters.date_from !== '' || filters.date_to !== ''
   }
@@ -156,11 +129,7 @@ export default function AllSubmissions() {
             Export CSV
           </button>
           <button className="refresh-btn" onClick={load} disabled={loading}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
+            <RefreshIcon />
             {loading ? 'Loading...' : 'Refresh'}
           </button>
         </div>
@@ -170,12 +139,7 @@ export default function AllSubmissions() {
       <div className="submissions-stats-bar">
         <div className="submissions-stat-item">
           <div className="submissions-stat-icon stat-total-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
+            <DocumentIcon size={18} />
           </div>
           <div className="submissions-stat-info">
             <div className="submissions-stat-value">{total}</div>
@@ -184,10 +148,7 @@ export default function AllSubmissions() {
         </div>
         <div className="submissions-stat-item">
           <div className="submissions-stat-icon stat-pending-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
+            <ClockIcon size={18} />
           </div>
           <div className="submissions-stat-info">
             <div className="submissions-stat-value">{items.filter(i => i.status === 'Pending').length}</div>
@@ -196,10 +157,7 @@ export default function AllSubmissions() {
         </div>
         <div className="submissions-stat-item">
           <div className="submissions-stat-icon stat-verified-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
+            <CheckCircleIcon size={18} />
           </div>
           <div className="submissions-stat-info">
             <div className="submissions-stat-value">{items.filter(i => i.status === 'Verified').length}</div>
@@ -208,11 +166,7 @@ export default function AllSubmissions() {
         </div>
         <div className="submissions-stat-item">
           <div className="submissions-stat-icon stat-rejected-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </svg>
+            <XCircleIcon size={18} />
           </div>
           <div className="submissions-stat-info">
             <div className="submissions-stat-value">{items.filter(i => i.status === 'Rejected').length}</div>
@@ -321,12 +275,7 @@ export default function AllSubmissions() {
             </div>
           ) : items.length === 0 ? (
             <div className="empty-state">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
+              <DocumentIcon size={48} strokeWidth={1.5} />
               <p className="empty-title">No submissions found</p>
               {hasActiveFilters() ? (
                 <p className="empty-desc">Try adjusting your search or filter criteria.</p>
@@ -365,10 +314,7 @@ export default function AllSubmissions() {
                         </td>
                         <td>
                           <span className="plot-badge-large">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                              <circle cx="12" cy="10" r="3" />
-                            </svg>
+                            <PinIcon size={12} />
                             {it.plot_number}
                           </span>
                         </td>
@@ -379,15 +325,14 @@ export default function AllSubmissions() {
                             </div>
                             <div>
                               <div className="applicant-name">
-                                {[it.first_name, it.last_name].filter(Boolean).join(' ') || '—'}
+                                {formatFullName(it.first_name, it.last_name)}
                               </div>
                               {it.farm_name && (
                                 <div className="applicant-id">{it.farm_name}</div>
                               )}
-                              {(it.province || it.district || it.tenure_type) && (
+                              {formatLocationLine(it) && (
                                 <div className="applicant-id" style={{ color: 'var(--gray-500)', fontSize: 12, marginTop: 2 }}>
-                                  {it.province || it.district ? `${it.province || ''}${it.province && it.district ? ' / ' : ''}${it.district || ''}` : ''}
-                                  {it.province || it.district ? (it.tenure_type ? ` · ${it.tenure_type}` : '') : it.tenure_type || ''}
+                                  {formatLocationLine(it)}
                                 </div>
                               )}
                             </div>
@@ -461,10 +406,7 @@ export default function AllSubmissions() {
           </div>
           {!selected ? (
             <div className="select-prompt">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <EyeIcon size={48} strokeWidth={1.5} />
               <p className="select-title">Select a submission</p>
               <p className="select-desc">Click on a row to view full details and take action.</p>
             </div>

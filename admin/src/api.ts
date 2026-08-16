@@ -19,6 +19,19 @@ function getAdminToken() {
   return sessionStorage.getItem('admin_token') || ''
 }
 
+function buildFilterParams(
+  filters: Partial<SubmissionFilters>,
+  keys: (keyof SubmissionFilters)[]
+): URLSearchParams {
+  const params = new URLSearchParams()
+  for (const key of keys) {
+    const value = filters[key]
+    if (!value || (key === 'status' && value === 'all')) continue
+    params.set(key, String(value))
+  }
+  return params
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`
   const adminToken = getAdminToken()
@@ -49,16 +62,9 @@ export const api = {
   },
 
   async listAllSubmissions(filters: Partial<SubmissionFilters>): Promise<PaginatedResult> {
-    const params = new URLSearchParams()
-    if (filters.status && filters.status !== 'all') params.set('status', filters.status)
-    if (filters.search) params.set('search', filters.search)
-    if (filters.date_from) params.set('date_from', filters.date_from)
-    if (filters.date_to) params.set('date_to', filters.date_to)
-    if (filters.sort_by) params.set('sort_by', filters.sort_by)
-    if (filters.sort_order) params.set('sort_order', filters.sort_order)
-    if (filters.page) params.set('page', String(filters.page))
-    if (filters.limit) params.set('limit', String(filters.limit))
-    
+    const params = buildFilterParams(filters, [
+      'status', 'search', 'date_from', 'date_to', 'sort_by', 'sort_order', 'page', 'limit',
+    ])
     const qs = params.toString()
     return request<PaginatedResult>(`/admin/submissions${qs ? `?${qs}` : ''}`)
   },
@@ -98,11 +104,7 @@ export const api = {
   },
 
   getExportUrl(filters: Partial<SubmissionFilters>): string {
-    const params = new URLSearchParams()
-    if (filters.status && filters.status !== 'all') params.set('status', filters.status)
-    if (filters.search) params.set('search', filters.search)
-    if (filters.date_from) params.set('date_from', filters.date_from)
-    if (filters.date_to) params.set('date_to', filters.date_to)
+    const params = buildFilterParams(filters, ['status', 'search', 'date_from', 'date_to'])
     const adminToken = getAdminToken()
     if (adminToken) params.set('token', adminToken)
     const qs = params.toString()
